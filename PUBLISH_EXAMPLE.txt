@@ -1,0 +1,7 @@
+# push example
+git init
+git branch -M main
+git add .
+git commit -m "feat: add xiaov2b app domain manager pack"
+git remote add origin git@github.com:L-Phantom/xiaov2b-app-domain-manager.git
+git push -u origin main
