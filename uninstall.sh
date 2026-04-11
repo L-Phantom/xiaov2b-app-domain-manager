@@ -2,7 +2,16 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-TARGET_DIR="${1:-/www/wwwroot/185.200.65.62}"
+TARGET_DIR="${1:-}"
+if [ -z "$TARGET_DIR" ]; then
+  if [ -f "$(pwd)/artisan" ]; then
+    TARGET_DIR="$(pwd)"
+  else
+    echo "Usage: bash uninstall.sh /path/to/v2board-root [backup-dir]" >&2
+    exit 1
+  fi
+fi
+
 BACKUP_BASE="$TARGET_DIR/.app-domain-manager-backups"
 BACKUP_DIR="${2:-$BACKUP_BASE/latest}"
 STATE_FILE="$BACKUP_DIR/state.tsv"

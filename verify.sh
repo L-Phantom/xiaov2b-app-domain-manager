@@ -2,12 +2,21 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-TARGET_DIR="${1:-/www/wwwroot/185.200.65.62}"
+TARGET_DIR="${1:-}"
 BASE_URL="${2:-}"
 SECURE_PATH="${3:-}"
 USER_TOKEN="${4:-}"
 ADMIN_AUTH="${5:-}"
 MANIFEST_FILE="$ROOT_DIR/manifest.txt"
+
+if [ -z "$TARGET_DIR" ]; then
+  if [ -f "$(pwd)/artisan" ]; then
+    TARGET_DIR="$(pwd)"
+  else
+    echo "Usage: bash verify.sh /path/to/v2board-root [base-url] [secure-path] [user-token] [admin-auth]" >&2
+    exit 1
+  fi
+fi
 
 if [ ! -d "$TARGET_DIR" ]; then
   echo "Target directory not found: $TARGET_DIR" >&2

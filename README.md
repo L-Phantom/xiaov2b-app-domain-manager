@@ -34,10 +34,10 @@
 
 ```bash
 cd /path/to/app-domain-manager-package
-bash install.sh /www/wwwroot/185.200.65.62
+bash install.sh /path/to/v2board-root
 ```
 
-如果不传路径，默认目标就是 `/www/wwwroot/185.200.65.62`。
+如果不传路径，会尝试使用当前目录（要求当前目录下存在 `artisan`）。
 
 安装时会：
 - 备份原文件到目标站点下的 `.app-domain-manager-backups/`
@@ -50,7 +50,7 @@ bash install.sh /www/wwwroot/185.200.65.62
 
 ```bash
 cd /path/to/app-domain-manager-package
-bash uninstall.sh /www/wwwroot/185.200.65.62
+bash uninstall.sh /path/to/v2board-root
 ```
 
 默认回滚最近一次安装生成的备份。
@@ -60,15 +60,15 @@ bash uninstall.sh /www/wwwroot/185.200.65.62
 只做本地运行时校验：
 
 ```bash
-bash verify.sh /www/wwwroot/185.200.65.62
+bash verify.sh /path/to/v2board-root
 ```
 
 如果要顺带测 HTTP 接口：
 
 ```bash
-bash verify.sh /www/wwwroot/185.200.65.62 \
-  http://185.200.65.62 \
-  650ff0cb \
+bash verify.sh /path/to/v2board-root \
+  https://panel.example.com \
+  YOUR_SECURE_PATH \
   YOUR_USER_TOKEN \
   YOUR_ADMIN_AUTH
 ```
@@ -83,7 +83,7 @@ bash verify.sh /www/wwwroot/185.200.65.62 \
 如果要验证“普通订阅保留原 host，App 订阅改成 App 入口域名”：
 
 ```bash
-php82 scripts/scenario_verify.php /www/wwwroot/185.200.65.62 app-edge.example.com
+php82 scripts/scenario_verify.php /path/to/v2board-root app-edge.example.com
 ```
 
 这条命令会：

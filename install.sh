@@ -2,9 +2,18 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-TARGET_DIR="${1:-/www/wwwroot/185.200.65.62}"
+TARGET_DIR="${1:-}"
 MANIFEST_FILE="$ROOT_DIR/manifest.txt"
 OVERLAY_DIR="$ROOT_DIR/overlay"
+if [ -z "$TARGET_DIR" ]; then
+  if [ -f "$(pwd)/artisan" ]; then
+    TARGET_DIR="$(pwd)"
+  else
+    echo "Usage: bash install.sh /path/to/v2board-root" >&2
+    exit 1
+  fi
+fi
+
 BACKUP_BASE="$TARGET_DIR/.app-domain-manager-backups"
 TIMESTAMP="$(date +%Y%m%d-%H%M%S)"
 BACKUP_DIR="$BACKUP_BASE/$TIMESTAMP"
