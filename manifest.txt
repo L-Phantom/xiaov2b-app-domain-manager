@@ -9,6 +9,7 @@ app/Http/Controllers/V1/Admin/Server/VmessController.php
 app/Http/Controllers/V1/Admin/Server/AppDomainController.php
 app/Http/Controllers/V1/Client/AppController.php
 app/Http/Controllers/V1/Client/ClientController.php
+app/Protocols/ClashMeta.php
 app/Http/Requests/Admin/ServerShadowsocksUpdate.php
 app/Http/Requests/Admin/ServerTrojanUpdate.php
 app/Http/Requests/Admin/ServerVmessUpdate.php
@@ -18,5 +19,6 @@ app/Services/ServerService.php
 app/Utils/Helper.php
 public/assets/admin/umi.js
 public/assets/admin/app-domain-manager.js
+resources/rules/app.meta.clash.yaml
 resources/views/admin.blade.php
 routes/web.php

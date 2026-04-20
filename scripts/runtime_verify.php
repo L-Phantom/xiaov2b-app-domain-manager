@@ -25,6 +25,11 @@ $result = [
         'app_api_domain_enable' => (int) config('v2board.app_api_domain_enable', 0),
         'app_api_domain_hosts' => array_values((array) config('v2board.app_api_domain_hosts', [])),
     ],
+    'templates' => [
+        'default_clash_meta_exists' => file_exists($target . '/resources/rules/default.clash.yaml'),
+        'app_meta_exists' => file_exists($target . '/resources/rules/app.meta.clash.yaml'),
+        'custom_app_meta_exists' => file_exists($target . '/resources/rules/custom.app.meta.clash.yaml'),
+    ],
 ];
 
 $user = \App\Models\User::where('banned', 0)->orderBy('id')->first();

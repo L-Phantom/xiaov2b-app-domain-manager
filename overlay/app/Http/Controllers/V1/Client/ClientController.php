@@ -43,6 +43,13 @@ class ClientController extends Controller
             ?? ($_SERVER['HTTP_USER_AGENT'] ?? '');
         $flag = strtolower($flag);
         if($flag) {
+            if (strpos($flag, 'app_meta') !== false) {
+                $class = new ClashMeta($user, $servers, [
+                    'default' => base_path() . '/resources/rules/app.meta.clash.yaml',
+                    'custom' => base_path() . '/resources/rules/custom.app.meta.clash.yaml',
+                ]);
+                return $class->handle();
+            }
             if (!strpos($flag, 'sing')) {
                 $this->setSubscribeInfoToServers($servers, $user);
                 foreach (array_reverse(glob(app_path('Protocols') . '/*.php')) as $file) {

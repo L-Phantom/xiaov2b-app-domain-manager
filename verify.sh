@@ -23,7 +23,7 @@ if [ ! -d "$TARGET_DIR" ]; then
   exit 1
 fi
 
-echo "[1/4] checking overlay files"
+echo "[1/5] checking overlay files"
 while IFS= read -r rel_path; do
   [ -n "$rel_path" ] || continue
   if [ ! -f "$TARGET_DIR/$rel_path" ]; then
@@ -40,7 +40,7 @@ elif command -v php >/dev/null 2>&1; then
   PHP_BIN="php"
 fi
 
-echo "[2/4] checking runtime bootstrap"
+echo "[2/5] checking runtime bootstrap"
 if [ -n "$PHP_BIN" ]; then
   "$PHP_BIN" "$ROOT_DIR/scripts/runtime_verify.php" "$TARGET_DIR"
 else
@@ -48,23 +48,30 @@ else
 fi
 
 if [ -n "$BASE_URL" ] && [ -n "$USER_TOKEN" ]; then
-  echo "[3/4] checking app http routes"
+  echo "[3/5] checking app http routes"
   curl -fsS "$BASE_URL/api/v1/client/app/bootstrap?token=$USER_TOKEN" >/dev/null
   curl -fsS "$BASE_URL/api/v1/client/custom_app/subscribe?token=$USER_TOKEN" >/dev/null
+  APP_META_BODY="$(curl -fsS "$BASE_URL/api/v1/client/custom_app/subscribe?token=$USER_TOKEN&flag=app_meta")"
+  printf '%s' "$APP_META_BODY" | grep -q "rule-providers:" || {
+    echo "app_meta response missing rule-providers" >&2
+    exit 1
+  }
   echo "public app routes ok"
 else
-  echo "[3/4] skip public http route verify"
+  echo "[3/5] skip public http route verify"
 fi
 
 if [ -n "$BASE_URL" ] && [ -n "$SECURE_PATH" ] && [ -n "$ADMIN_AUTH" ]; then
-  echo "[4/4] checking admin fetch route"
+  echo "[4/5] checking admin fetch route"
   curl -fsS \
     -H "Accept: application/json" \
     -H "authorization: $ADMIN_AUTH" \
     "$BASE_URL/api/v1/$SECURE_PATH/server/app-domain/fetch" >/dev/null
   echo "admin fetch route ok"
 else
-  echo "[4/4] skip admin route verify"
+  echo "[4/5] skip admin route verify"
 fi
+
+echo "[5/5] app meta overlay verify finished"
 
 echo "verify finished"
