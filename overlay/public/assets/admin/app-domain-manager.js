@@ -55,6 +55,14 @@
       ".adm-preview{background:#fafafa;border:1px solid #f0f0f0;border-radius:6px;padding:12px 14px;font-size:13px;color:#595959;word-break:break-all;line-height:1.8;}",
       ".adm-preview-empty{color:#bfbfbf;font-style:italic;}",
       ".adm-divider{height:1px;background:#f0f0f0;margin:20px 0;}",
+      ".adm-node-row{display:flex;align-items:center;padding:8px 0;border-bottom:1px solid #f5f5f5;}",
+      ".adm-node-row:last-child{border-bottom:none;}",
+      ".adm-node-name{flex:1;font-size:13px;font-weight:500;color:#1f2937;}",
+      ".adm-node-host{flex:1;font-size:12px;color:#9ca3af;margin:0 12px;}",
+      ".adm-node-toggle{cursor:pointer;width:36px;height:20px;border-radius:10px;background:#d9d9d9;position:relative;transition:.2s;}",
+      ".adm-node-toggle.on{background:#1890ff;}",
+      ".adm-node-toggle::after{content:'';position:absolute;width:16px;height:16px;top:2px;left:2px;background:#fff;border-radius:50%;transition:.2s;}",
+      ".adm-node-toggle.on::after{left:18px;}",
       "@media(max-width:768px){.adm-row{flex-direction:column;gap:0;}.adm-col{min-width:100%;}}"
     ].join("\n");
     document.head.appendChild(style);
@@ -68,6 +76,7 @@
 
   function normalizeState(data) {
     var hosts = Array.isArray(data.app_api_domain_hosts) ? data.app_api_domain_hosts : [];
+    var nodes = Array.isArray(data.nodes) ? data.nodes : [];
     return {
       app_domain_enable: Number(data.app_domain_enable || 0),
       app_domain_public_host: data.app_domain_public_host || "",
@@ -77,7 +86,8 @@
       app_api_domain_hosts: hosts,
       app_api_domain_encrypt_enable: Number(data.app_api_domain_encrypt_enable || 0),
       app_api_domain_encrypt_key: data.app_api_domain_encrypt_key || "",
-      preview: data.preview || {}
+      preview: data.preview || {},
+      nodes: nodes
     };
   }
 
@@ -190,6 +200,22 @@
       '    </div>',
       '  </div>',
 
+      '  <div class="adm-card">',
+      '    <div class="adm-card-head"><h3 class="adm-card-title">节点域名替换控制</h3></div>',
+      '    <div class="adm-card-body">',
+      '      <div class="adm-form-desc" style="margin-bottom:12px">关闭的节点将保持原始地址，不参与入口域名替换。</div>',
+      '      <div id="adm-node-list">',
+      state.nodes.map(function (node) {
+        return '<div class="adm-node-row" data-id="' + node.id + '">' +
+          '<span class="adm-node-name">' + escapeHtml(node.name) + '</span>' +
+          '<span class="adm-node-host">' + escapeHtml(node.host) + '</span>' +
+          '<div class="adm-node-toggle' + (node.app_domain_replace ? ' on' : '') + '" data-node-id="' + node.id + '" data-field="app_domain_replace"></div>' +
+          '</div>';
+      }).join(""),
+      '      </div>',
+      '    </div>',
+      '  </div>',
+
       '  <div style="text-align:right;padding-top:8px;">',
       '    <button class="adm-btn adm-btn-primary" id="adm-save-btn">保存</button>',
       '  </div>',
@@ -215,6 +241,16 @@
     });
     var saveBtn = document.getElementById("adm-save-btn");
     if (saveBtn) saveBtn.addEventListener("click", saveConfig);
+
+    document.querySelectorAll(".adm-node-toggle").forEach(function (toggle) {
+      toggle.addEventListener("click", function () {
+        var nodeId = toggle.getAttribute("data-node-id");
+        var isOn = toggle.classList.contains("on");
+        var newValue = isOn ? 0 : 1;
+        toggle.classList.toggle("on");
+        request("POST", "/server/v2node/update", { id: Number(nodeId), app_domain_replace: newValue });
+      });
+    });
   }
 
   function collectForm() {
