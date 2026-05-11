@@ -252,7 +252,9 @@ class ServerService
         $replaceHost = trim((string) config('v2board.app_domain_replace_host', ''));
         if ($replaceEnabled && $replaceHost !== '') {
             $servers = array_map(function ($server) use ($replaceHost) {
-                $server['host'] = $replaceHost;
+                if ((int) ($server['app_domain_replace'] ?? 1) === 1) {
+                    $server['host'] = $replaceHost;
+                }
                 return $server;
             }, $servers);
         }

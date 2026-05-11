@@ -42,6 +42,7 @@ class V2nodeController extends Controller
             'tags' => 'nullable|array',
             'rate' => 'required',
             'show' => 'nullable|in:0,1',
+            'app_domain_replace' => 'nullable|in:0,1',
             'sort' => 'nullable'
         ]);
         if ($params['protocol'] == 'anytls' && $params['tls'] === 0) {
@@ -191,6 +192,7 @@ class V2nodeController extends Controller
         $params = $request->validate([
             'show' => 'nullable|in:0,1',
             'app_show' => 'nullable|in:0,1',
+            'app_domain_replace' => 'nullable|in:0,1',
         ]);
 
         $server = ServerV2node::find($request->input('id'));
