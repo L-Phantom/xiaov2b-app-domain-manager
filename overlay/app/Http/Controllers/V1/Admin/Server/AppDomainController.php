@@ -20,21 +20,6 @@ class AppDomainController extends Controller
             ? sprintf('https://%s%s?token=%s', $publicHost, $subscribePath, $token)
             : sprintf('%s?token=%s', $subscribePath, $token);
 
-        $nodes = \App\Models\ServerV2node::select(['id', 'name', 'host', 'app_show', 'app_domain_replace'])
-            ->orderBy('sort', 'ASC')
-            ->get()
-            ->map(function ($node) {
-                return [
-                    'id' => $node->id,
-                    'name' => $node->name,
-                    'host' => $node->host,
-                    'app_show' => (int) $node->app_show,
-                    'app_domain_replace' => (int) ($node->app_domain_replace ?? 1),
-                ];
-            })
-            ->values()
-            ->toArray();
-
         return response([
             'data' => [
                 'app_domain_enable' => (int) config('v2board.app_domain_enable', 0),
@@ -45,7 +30,6 @@ class AppDomainController extends Controller
                 'app_api_domain_hosts' => $hosts,
                 'app_api_domain_encrypt_enable' => (int) config('v2board.app_api_domain_encrypt_enable', 0),
                 'app_api_domain_encrypt_key' => trim((string) config('v2board.app_api_domain_encrypt_key', '')),
-                'nodes' => $nodes,
                 'preview' => [
                     'subscribe_example' => $subscribeExample,
                     'bootstrap_path' => '/api/v1/client/app/bootstrap',
