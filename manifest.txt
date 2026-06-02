@@ -9,6 +9,9 @@ app/Http/Controllers/V1/Admin/Server/VmessController.php
 app/Http/Controllers/V1/Admin/Server/AppDomainController.php
 app/Http/Controllers/V1/Client/AppController.php
 app/Http/Controllers/V1/Client/ClientController.php
+app/Http/Controllers/V2/App/AppController.php
+app/Http/Kernel.php
+app/Http/Middleware/AppUser.php
 app/Models/AppDomainRule.php
 app/Protocols/ClashMeta.php
 app/Http/Requests/Admin/AppDomainRuleSave.php
@@ -19,6 +22,7 @@ app/Http/Requests/Admin/ServerVmessUpdate.php
 app/Http/Routes/V1/AdminRoute.php
 app/Http/Routes/V1/ClientRoute.php
 app/Services/AppDomainService.php
+app/Services/AppClientProfileService.php
 app/Services/ServerService.php
 app/Utils/Helper.php
 public/assets/admin/umi.js

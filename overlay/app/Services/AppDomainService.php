@@ -41,11 +41,11 @@ class AppDomainService
     {
         return [
             'app_domain_enable' => (int) config('v2board.app_domain_enable', 0),
-            'app_domain_public_host' => $this->normalizeHost(config('v2board.app_domain_public_host', '')),
+            'app_domain_public_host' => $this->normalizeEndpoint(config('v2board.app_domain_public_host', '')),
             'app_domain_subscribe_path' => $this->normalizePath(config('v2board.app_domain_subscribe_path', '/api/v1/client/custom_app/subscribe')),
             'app_domain_replace_host' => $this->normalizeHost(config('v2board.app_domain_replace_host', '')),
             'app_api_domain_enable' => (int) config('v2board.app_api_domain_enable', 0),
-            'app_api_domain_hosts' => $this->normalizeHosts((array) config('v2board.app_api_domain_hosts', [])),
+            'app_api_domain_hosts' => $this->normalizeEndpoints((array) config('v2board.app_api_domain_hosts', [])),
             'app_api_domain_encrypt_enable' => (int) config('v2board.app_api_domain_encrypt_enable', 0),
             'app_api_domain_encrypt_key' => trim((string) config('v2board.app_api_domain_encrypt_key', '')),
             'app_domain_rule_enable' => (int) config('v2board.app_domain_rule_enable', 0),
@@ -61,13 +61,13 @@ class AppDomainService
 
         $config['preview'] = [
             'subscribe_example' => $publicHost
-                ? sprintf('https://%s%s?token=%s', $publicHost, $subscribePath, $token)
+                ? sprintf('%s%s?token=%s', $publicHost, $subscribePath, $token)
                 : sprintf('%s?token=%s', $subscribePath, $token),
             'bootstrap_path' => '/api/v1/client/app/bootstrap',
             'app_config_path' => '/api/v1/client/app/getConfig',
             'app_version_path' => '/api/v1/client/app/getVersion',
             'api_urls' => array_map(function ($host) {
-                return sprintf('https://%s/api/v1/client/app/bootstrap', $host);
+                return sprintf('%s/api/v1/client/app/bootstrap', $host);
             }, $config['app_api_domain_hosts'])
         ];
 
@@ -77,9 +77,9 @@ class AppDomainService
     public function saveConfig(array $data): bool
     {
         $config = config('v2board', []);
-        $publicHost = $this->normalizeHost($data['app_domain_public_host'] ?? '');
+        $publicHost = $this->normalizeEndpoint($data['app_domain_public_host'] ?? '');
         $replaceHost = $this->normalizeHost($data['app_domain_replace_host'] ?? '');
-        $apiHosts = $this->normalizeHosts((array) ($data['app_api_domain_hosts'] ?? []));
+        $apiHosts = $this->normalizeEndpoints((array) ($data['app_api_domain_hosts'] ?? []));
 
         $config['app_domain_enable'] = (int) $data['app_domain_enable'];
         $config['app_domain_public_host'] = $publicHost;
@@ -118,11 +118,11 @@ class AppDomainService
         $user = $this->findUserByToken($token);
         $rule = $this->matchSubscribeRule($user);
         $host = $rule && (int) $rule->replace_subscribe_host === 1
-            ? $this->normalizeHost($rule->domain)
+            ? $this->normalizeEndpoint($rule->domain)
             : $config['app_domain_public_host'];
 
         if ($host !== '') {
-            return 'https://' . $host . $path;
+            return $host . $path;
         }
 
         return url($path);
@@ -314,6 +314,31 @@ class AppDomainService
         return rtrim($host, '/');
     }
 
+    public function normalizeEndpoint(?string $endpoint): string
+    {
+        $endpoint = trim((string) $endpoint);
+        if ($endpoint === '') {
+            return '';
+        }
+        if (!preg_match('#^https?://#i', $endpoint)) {
+            $endpoint = $this->defaultSchemeForEndpoint($endpoint) . '://' . $endpoint;
+        }
+
+        $parts = parse_url($endpoint);
+        if (!$parts || empty($parts['host'])) {
+            return '';
+        }
+
+        $scheme = strtolower((string) ($parts['scheme'] ?? 'https'));
+        if (!in_array($scheme, ['http', 'https'], true)) {
+            $scheme = 'https';
+        }
+        $host = strtolower((string) $parts['host']);
+        $port = isset($parts['port']) ? ':' . (int) $parts['port'] : '';
+
+        return sprintf('%s://%s%s', $scheme, $host, $port);
+    }
+
     public function normalizePath(?string $path): string
     {
         $path = trim((string) $path);
@@ -330,9 +355,16 @@ class AppDomainService
         }, $hosts)));
     }
 
+    public function normalizeEndpoints(array $endpoints): array
+    {
+        return array_values(array_filter(array_map(function ($endpoint) {
+            return $this->normalizeEndpoint($endpoint);
+        }, $endpoints)));
+    }
+
     public function getApiDomainHosts(): array
     {
-        return $this->normalizeHosts((array) config('v2board.app_api_domain_hosts', []));
+        return $this->normalizeEndpoints((array) config('v2board.app_api_domain_hosts', []));
     }
 
     protected function resolveGlobalReplaceHost(): string
@@ -497,7 +529,7 @@ class AppDomainService
     protected function buildApiUrls(array $apiHosts): array
     {
         return array_map(function ($host) {
-            return sprintf('https://%s/api/v1/client/app', $host);
+            return sprintf('%s/api/v1/client/app', $host);
         }, $apiHosts);
     }
 
@@ -508,6 +540,19 @@ class AppDomainService
         }
 
         return Helper::encryptAppPayload($apiUrls, (string) config('v2board.app_api_domain_encrypt_key', ''));
+    }
+
+    protected function defaultSchemeForEndpoint(string $endpoint): string
+    {
+        $host = preg_replace('#/.*$#', '', trim($endpoint));
+        if (preg_match('#^(\d{1,3}\.){3}\d{1,3}(:\d+)?$#', $host)) {
+            return 'http';
+        }
+        if (preg_match('#:(?!443$)\d+$#', $host)) {
+            return 'http';
+        }
+
+        return 'https';
     }
 
     protected function clearConfigCache(string $configPath): void

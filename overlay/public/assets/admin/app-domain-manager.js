@@ -39,6 +39,26 @@
     return String(value || "").trim().replace(/^https?:\/\//i, "").replace(/\/+$/, "");
   }
 
+  function defaultSchemeForEndpoint(value) {
+    var host = normalizeHost(value).replace(/\/.*$/, "");
+    if (/^(\d{1,3}\.){3}\d{1,3}(:\d+)?$/.test(host)) return "http";
+    if (/:(?!443$)\d+$/.test(host)) return "http";
+    return "https";
+  }
+
+  function normalizeEndpoint(value) {
+    var raw = String(value || "").trim().replace(/\/+$/, "");
+    if (!raw) return "";
+    if (!/^https?:\/\//i.test(raw)) raw = defaultSchemeForEndpoint(raw) + "://" + raw;
+    try {
+      var url = new URL(raw);
+      if (url.protocol !== "http:" && url.protocol !== "https:") return "";
+      return url.protocol + "//" + url.host;
+    } catch (e) {
+      return "";
+    }
+  }
+
   function normalizeConfig(data) {
     data = data || {};
     return {
@@ -301,14 +321,14 @@
   function subscribePreview(config) {
     var path = config.app_domain_subscribe_path || "/api/v1/client/custom_app/subscribe";
     if (path.charAt(0) !== "/") path = "/" + path;
-    var host = normalizeHost(config.app_domain_public_host);
-    return host ? "https://" + host + path + "?token=YOUR_TOKEN" : path + "?token=YOUR_TOKEN";
+    var host = normalizeEndpoint(config.app_domain_public_host);
+    return host ? host + path + "?token=YOUR_TOKEN" : path + "?token=YOUR_TOKEN";
   }
 
   function apiPreview(config) {
     if (!config.app_api_domain_hosts.length) return "未配置";
     return config.app_api_domain_hosts.map(function (host) {
-      return "https://" + normalizeHost(host) + "/api/v1/client/app";
+      return normalizeEndpoint(host) + "/api/v1/client/app";
     }).join("    ");
   }
 
@@ -560,7 +580,7 @@
       app_domain_subscribe_path: (document.getElementById("adm_subscribe_path") || {}).value || config.app_domain_subscribe_path,
       app_domain_replace_host: (document.getElementById("adm_replace_host") || {}).value || config.app_domain_replace_host,
       app_api_domain_enable: checkedOrConfig("adm_api_enable", "app_api_domain_enable", config),
-      app_api_domain_hosts: ((document.getElementById("adm_api_hosts") || {}).value || "").split(/\n+/).map(normalizeHost).filter(Boolean),
+      app_api_domain_hosts: ((document.getElementById("adm_api_hosts") || {}).value || "").split(/\n+/).map(normalizeEndpoint).filter(Boolean),
       app_api_domain_encrypt_enable: checkedOrConfig("adm_encrypt_enable", "app_api_domain_encrypt_enable", config),
       app_api_domain_encrypt_key: (document.getElementById("adm_encrypt_key") || {}).value || config.app_api_domain_encrypt_key
     };

@@ -26,6 +26,10 @@
   - Android 本地打包
   - Windows GitHub Actions 打包
 - 后续这个仓库按生产维护 / 测试平台灰度思路推进，优先保证可回滚、可验证、可重复部署。
+- 2026-06-03 已补齐 App API 域名池协议处理：
+  - `185.200.65.62:3883` 这类 IP:端口 endpoint 默认按 `http://` 下发，不再强制拼成不可用的 `https://`。
+  - `/api/v2/app/bootstrap`、App 域名管理后台预览、V1 App bootstrap 统一保留 endpoint 协议。
+  - `app.user` 中间件已纳入补丁清单，避免 V2 App 登录态接口在 Workerman 下因 middleware alias 未注册返回 502。
 
 ## 目录说明
 
