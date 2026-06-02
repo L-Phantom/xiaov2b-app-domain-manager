@@ -19,6 +19,7 @@ $kernel->bootstrap();
 $result = [
     'services' => [
         'app_domain_service_exists' => class_exists(\App\Services\AppDomainService::class),
+        'app_domain_rule_model_exists' => class_exists(\App\Models\AppDomainRule::class),
     ],
     'config' => [
         'app_domain_enable' => (int) config('v2board.app_domain_enable', 0),
@@ -27,6 +28,11 @@ $result = [
         'app_domain_replace_host' => (string) config('v2board.app_domain_replace_host', ''),
         'app_api_domain_enable' => (int) config('v2board.app_api_domain_enable', 0),
         'app_api_domain_hosts' => array_values((array) config('v2board.app_api_domain_hosts', [])),
+    ],
+    'rules' => [
+        'app_domain_rule_enable' => (int) config('v2board.app_domain_rule_enable', 0),
+        'table_exists' => \Illuminate\Support\Facades\Schema::hasTable('v2_app_domain_rules'),
+        'count' => \Illuminate\Support\Facades\Schema::hasTable('v2_app_domain_rules') ? \App\Models\AppDomainRule::count() : null,
     ],
     'templates' => [
         'default_clash_meta_exists' => file_exists($target . '/resources/rules/default.clash.yaml'),
@@ -54,6 +60,7 @@ if ($user) {
         'bootstrap_has_subscribe_url' => isset($bootstrap['subscribe_url']),
         'bootstrap_api_url_count' => count($bootstrap['api_urls'] ?? []),
         'version_bootstrap_has_path' => ($versionBootstrap['bootstrap_path'] ?? '') === '/api/v1/client/app/bootstrap',
+        'options_have_rule_table_state' => array_key_exists('rules_table_exists', $appDomainService->getOptions()),
     ];
     $result['servers'] = [
         'all_count' => count($allServers),

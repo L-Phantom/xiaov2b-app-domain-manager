@@ -123,7 +123,7 @@ This means panel upgrades do not have to preserve App-specific full-meta logic f
 - Mirror remote rule providers to your own domain instead of direct GitHub URLs
 - Add a small upstream baseline note whenever the patch is rebased
 - Keep `verify.sh` aligned with every new App-specific route or template
-- Add a production preflight script for schema, PHP CLI, route, config, opcache, and webman reload checks
+- Keep `scripts/preflight.php` aligned with schema, PHP CLI, route, config, opcache, and webman reload checks
 - Add `--dry-run` support to the installer so production can preview backup and overwrite scope
 - Add checksum / diff summary for every overlay file before install
 - Make admin secret fields write-only or masked by default so existing secrets are not exposed or accidentally overwritten

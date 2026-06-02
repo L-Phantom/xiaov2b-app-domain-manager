@@ -3,12 +3,19 @@
 namespace App\Http\Controllers\V1\Admin\Server;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Admin\AppDomainRuleSave;
+use App\Http\Requests\Admin\AppDomainRuleSort;
 use App\Services\AppDomainService;
 use Illuminate\Http\Request;
 
 class AppDomainController extends Controller
 {
     public function fetch()
+    {
+        return $this->config();
+    }
+
+    public function config()
     {
         return response([
             'data' => (new AppDomainService())->getAdminConfig()
@@ -27,6 +34,7 @@ class AppDomainController extends Controller
             'app_api_domain_hosts.*' => 'nullable|string',
             'app_api_domain_encrypt_enable' => 'required|in:0,1',
             'app_api_domain_encrypt_key' => 'nullable|string',
+            'app_domain_rule_enable' => 'nullable|in:0,1',
         ], [
             'app_domain_subscribe_path.regex' => 'App订阅路径必须以/开头',
         ]);
@@ -37,6 +45,46 @@ class AppDomainController extends Controller
 
         return response([
             'data' => true
+        ]);
+    }
+
+    public function rules()
+    {
+        return response([
+            'data' => (new AppDomainService())->getRules()
+        ]);
+    }
+
+    public function saveRule(AppDomainRuleSave $request)
+    {
+        return response([
+            'data' => (new AppDomainService())->saveRule($request->validated())
+        ]);
+    }
+
+    public function dropRule(Request $request)
+    {
+        $id = (int) $request->input('id');
+        if (!$id) {
+            abort(500, '规则ID不能为空');
+        }
+
+        return response([
+            'data' => (new AppDomainService())->dropRule($id)
+        ]);
+    }
+
+    public function sortRule(AppDomainRuleSort $request)
+    {
+        return response([
+            'data' => (new AppDomainService())->sortRules($request->input('rule_ids'))
+        ]);
+    }
+
+    public function options()
+    {
+        return response([
+            'data' => (new AppDomainService())->getOptions()
         ]);
     }
 }

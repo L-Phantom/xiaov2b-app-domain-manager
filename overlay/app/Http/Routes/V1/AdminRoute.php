@@ -35,6 +35,13 @@ class AdminRoute
             $router->post('/server/manage/sort', 'V1\\Admin\\Server\\ManageController@sort');
             $router->get ('/server/app-domain/fetch', 'V1\\Admin\\Server\\AppDomainController@fetch');
             $router->post('/server/app-domain/save', 'V1\\Admin\\Server\\AppDomainController@save');
+            $router->get ('/server/app-domain/config', 'V1\\Admin\\Server\\AppDomainController@config');
+            $router->post('/server/app-domain/config', 'V1\\Admin\\Server\\AppDomainController@save');
+            $router->get ('/server/app-domain/rules', 'V1\\Admin\\Server\\AppDomainController@rules');
+            $router->post('/server/app-domain/rule/save', 'V1\\Admin\\Server\\AppDomainController@saveRule');
+            $router->post('/server/app-domain/rule/drop', 'V1\\Admin\\Server\\AppDomainController@dropRule');
+            $router->post('/server/app-domain/rule/sort', 'V1\\Admin\\Server\\AppDomainController@sortRule');
+            $router->get ('/server/app-domain/options', 'V1\\Admin\\Server\\AppDomainController@options');
             $router->group([
                 'prefix' => 'server/trojan'
             ], function ($router) {

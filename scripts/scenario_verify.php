@@ -57,9 +57,11 @@ try {
     config([
         'v2board.app_domain_enable' => 1,
         'v2board.app_domain_replace_host' => $replaceHost,
+        'v2board.app_domain_rule_enable' => 0,
     ]);
 
-    $service = new \App\Services\ServerService();
+$service = new \App\Services\ServerService();
+$appDomainService = new \App\Services\AppDomainService();
     $allServers = $service->getAvailableServers($user);
     $appServers = $service->getAvailableAppServers($user);
     $allMatchedServer = null;
@@ -88,10 +90,69 @@ try {
         }
     }
 
+    $ruleHost = 'rule-' . $replaceHost;
+    $ruleMatchedServer = null;
+    $ruleTableExists = \Illuminate\Support\Facades\Schema::hasTable('v2_app_domain_rules');
+    if ($ruleTableExists && class_exists(\App\Models\AppDomainRule::class)) {
+        $appDomainService->saveRule([
+            'name' => 'scenario verify',
+            'enable' => 1,
+            'sort' => 1,
+            'domain' => $ruleHost,
+            'user_group_ids' => [],
+            'plan_ids' => [],
+            'server_types' => [$serverType],
+            'server_ids' => [(int) $server->id],
+            'protocols' => [],
+            'replace_node_host' => 1,
+            'replace_subscribe_host' => 0,
+            'remark' => 'scenario verify',
+        ]);
+        $appDomainService->saveRule([
+            'name' => 'scenario subscribe verify',
+            'enable' => 1,
+            'sort' => 2,
+            'domain' => 'subscribe-' . $replaceHost,
+            'user_group_ids' => [(int) $user->group_id],
+            'plan_ids' => [],
+            'server_types' => [],
+            'server_ids' => [],
+            'protocols' => [],
+            'replace_node_host' => 0,
+            'replace_subscribe_host' => 1,
+            'remark' => 'scenario subscribe verify',
+        ]);
+        $savedRules = \App\Models\AppDomainRule::whereIn('name', ['scenario verify', 'scenario subscribe verify'])
+            ->orderBy('sort', 'ASC')
+            ->get();
+        $appDomainService->sortRules($savedRules->pluck('id')->reverse()->values()->toArray());
+        $server->app_domain_replace = 1;
+        $server->save();
+        config([
+            'v2board.app_domain_enable' => 1,
+            'v2board.app_domain_rule_enable' => 1,
+        ]);
+        $ruleServers = $service->getAvailableAppServers($user);
+        foreach ($ruleServers as $item) {
+            if ((int) ($item['id'] ?? 0) === (int) $server->id && ($item['type'] ?? '') === $serverType) {
+                $ruleMatchedServer = $item;
+                break;
+            }
+        }
+        $subscribeUrl = $appDomainService->buildSubscribeUrl($user->token);
+        $crudRule = \App\Models\AppDomainRule::where('name', 'scenario subscribe verify')->first();
+        if ($crudRule) {
+            $appDomainService->dropRule((int) $crudRule->id);
+        }
+    }
+
     $checks = [
         'all_servers_keep_original_host' => ($allMatchedServer['host'] ?? null) === ($server->host ?? null),
         'app_replace_enabled_uses_replace_host' => ($appMatchedServer['host'] ?? null) === $replaceHost,
         'app_replace_disabled_keeps_original_host' => ($appMatchedServerWithoutReplace['host'] ?? null) === ($server->host ?? null),
+        'rule_match_uses_rule_host' => $ruleTableExists ? (($ruleMatchedServer['host'] ?? null) === $ruleHost) : true,
+        'subscribe_rule_uses_user_matched_host' => $ruleTableExists ? (strpos($subscribeUrl ?? '', 'https://subscribe-' . $replaceHost) === 0) : true,
+        'rule_crud_sort_drop_ok' => $ruleTableExists ? (\App\Models\AppDomainRule::where('name', 'scenario subscribe verify')->count() === 0) : true,
     ];
 
     $result = [
@@ -106,7 +167,9 @@ try {
             'all_servers_should_keep_original_host' => true,
             'app_servers_should_use_replace_host_when_node_replace_enabled' => $replaceHost,
             'app_servers_should_keep_original_host_when_node_replace_disabled' => true,
+            'rule_match_should_use_rule_host_when_table_exists' => $ruleTableExists ? $ruleHost : 'skipped',
         ],
+        'rule_table_exists' => $ruleTableExists,
         'checks' => $checks,
         'all_sample' => array_slice(array_map(function ($item) {
             return [

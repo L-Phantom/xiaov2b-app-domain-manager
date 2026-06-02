@@ -43,6 +43,12 @@
   校验当前面板内的 App 域名管理运行状态
 - `scripts/scenario_verify.php`
   做一轮不落库的场景验证，确认普通订阅与 App 订阅分流逻辑
+- `scripts/preflight.php`
+  检查目标站点、PHP 能力、规则表和节点字段状态
+- `scripts/migrate_app_domain.php`
+  创建 App 域名规则表，默认 dry-run，明确传 `--apply` 才执行
+- `sql/app_domain_rules.sql`
+  App 域名分发规则表 SQL
 - `overlay/resources/rules/app.meta.clash.yaml`
   App 第二阶段完整 Meta 模板
 - `platform/`
@@ -71,17 +77,21 @@
 
 ```bash
 cd /path/to/app-domain-manager-package
+php82 scripts/preflight.php /path/to/v2board-root
+php82 scripts/migrate_app_domain.php /path/to/v2board-root --dry-run
+php82 scripts/migrate_app_domain.php /path/to/v2board-root --apply
 bash install.sh /path/to/v2board-root
 ```
 
 如果不传路径，会尝试使用当前目录（要求当前目录下存在 `artisan`）。
 
 安装时会：
+- 可选创建 `v2_app_domain_rules` 规则表
 - 备份原文件到目标站点下的 `.app-domain-manager-backups/`
 - 覆盖 `overlay/` 中的文件
 - 执行 `view:clear`
 - 执行 `config:clear` 与 `config:cache`
-- 如果检测到 `WEBMANPID`，自动发送 `SIGUSR1` 热重载
+- 如果检测到 Webman，优先执行完整 `stop/start`，必要时才回退到进程 reload
 
 ## 回滚
 
@@ -127,8 +137,28 @@ php82 scripts/scenario_verify.php /path/to/v2board-root app-edge.example.com
 - 在事务里临时把一个节点视为 `app_show=1`
 - 只在运行时打开 `app_domain_enable=1`
 - 临时注入 `app_domain_replace_host`
+- 如果规则表存在，会在事务里临时创建规则，验证规则匹配优先级
 - 输出普通节点样本与 App 节点样本
 - 最后自动回滚，不写入数据库
+
+## App 域名规则 API
+
+第三阶段新增了规则表和后端 API，供后续原生化后台 UI 使用。
+
+兼容旧接口：
+- `GET /api/v1/{secure_path}/server/app-domain/fetch`
+- `POST /api/v1/{secure_path}/server/app-domain/save`
+
+新增接口：
+- `GET /api/v1/{secure_path}/server/app-domain/config`
+- `POST /api/v1/{secure_path}/server/app-domain/config`
+- `GET /api/v1/{secure_path}/server/app-domain/rules`
+- `POST /api/v1/{secure_path}/server/app-domain/rule/save`
+- `POST /api/v1/{secure_path}/server/app-domain/rule/drop`
+- `POST /api/v1/{secure_path}/server/app-domain/rule/sort`
+- `GET /api/v1/{secure_path}/server/app-domain/options`
+
+规则表存在且 `app_domain_rule_enable=1` 时，`AppDomainService` 会优先按规则匹配用户组、套餐、节点类型、节点 ID 和协议范围。没有命中规则时自动回落全局 App 域名配置。
 
 ## 给 FlClash / 自研客户端的联调入口
 

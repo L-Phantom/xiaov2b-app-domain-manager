@@ -501,11 +501,11 @@ bash verify.sh /path/to/site https://panel.example.com secure_path user_token ad
 
 任务：
 
-- 新增 Model。
-- 新增 Request。
-- 新增 Controller 方法。
-- 新增 SQL 和 migrate 脚本。
-- 新增 admin options 接口。
+- 已新增 `AppDomainRule` Model。
+- 已新增 `AppDomainRuleSave` / `AppDomainRuleSort` Request。
+- 已新增 `config` / `rules` / `rule/save` / `rule/drop` / `rule/sort` / `options` Controller 方法和 Admin 路由。
+- 已新增 `sql/app_domain_rules.sql`、`scripts/preflight.php`、`scripts/migrate_app_domain.php`。
+- 已在 `AppDomainService` 中加入规则匹配、规则 CRUD、options、订阅域名规则匹配和无规则回退全局配置。
 
 验收：
 
