@@ -92,6 +92,7 @@ $appDomainService = new \App\Services\AppDomainService();
 
     $ruleHost = 'rule-' . $replaceHost;
     $ruleMatchedServer = null;
+    $ruleUnmatchedServer = null;
     $ruleTableExists = \Illuminate\Support\Facades\Schema::hasTable('v2_app_domain_rules');
     if ($ruleTableExists && class_exists(\App\Models\AppDomainRule::class)) {
         $appDomainService->saveRule([
@@ -139,6 +140,13 @@ $appDomainService = new \App\Services\AppDomainService();
                 break;
             }
         }
+        $ruleUnmatchedServer = $appDomainService->applyToServer($user, [
+            'id' => 99999999,
+            'type' => $serverType,
+            'name' => 'scenario unmatched',
+            'host' => 'scenario-origin.example.com',
+            'app_domain_replace' => 1,
+        ]);
         $subscribeUrl = $appDomainService->buildSubscribeUrl($user->token);
         $crudRule = \App\Models\AppDomainRule::where('name', 'scenario subscribe verify')->first();
         if ($crudRule) {
@@ -151,6 +159,7 @@ $appDomainService = new \App\Services\AppDomainService();
         'app_replace_enabled_uses_replace_host' => ($appMatchedServer['host'] ?? null) === $replaceHost,
         'app_replace_disabled_keeps_original_host' => ($appMatchedServerWithoutReplace['host'] ?? null) === ($server->host ?? null),
         'rule_match_uses_rule_host' => $ruleTableExists ? (($ruleMatchedServer['host'] ?? null) === $ruleHost) : true,
+        'rule_unmatched_keeps_original_host' => $ruleTableExists ? (($ruleUnmatchedServer['host'] ?? null) === 'scenario-origin.example.com') : true,
         'subscribe_rule_uses_user_matched_host' => $ruleTableExists ? (strpos($subscribeUrl ?? '', 'https://subscribe-' . $replaceHost) === 0) : true,
         'rule_crud_sort_drop_ok' => $ruleTableExists ? (\App\Models\AppDomainRule::where('name', 'scenario subscribe verify')->count() === 0) : true,
     ];

@@ -106834,17 +106834,6 @@
                         })
                     }
                 }, {
-                    title: "域名替换",
-                    dataIndex: "app_domain_replace",
-                    key: "app_domain_replace",
-                    render: (e,t)=>{
-                        return y.a.createElement(f["a"], {
-                            size: "small",
-                            checked: parseInt(void 0 === e ? 1 : e),
-                            onClick: ()=>this.update(t, "app_domain_replace", parseInt(void 0 === e ? 1 : e) ? 0 : 1)
-                        })
-                    }
-                }, {
                     title: y.a.createElement("span", null, y.a.createElement(u["a"], {
                         placement: "top",
                         title: y.a.createElement("div", null, y.a.createElement(h["a"], {
@@ -107025,14 +107014,6 @@
                             size: "small",
                             checked: parseInt(void 0 === e.app_show ? 1 : e.app_show),
                             onClick: ()=>this.update(e, "app_show", parseInt(void 0 === e.app_show ? 1 : e.app_show) ? 0 : 1)
-                        }), y.a.createElement(a["a"], {
-                            type: "vertical"
-                        }), y.a.createElement("span", {
-                            style: {marginRight: 4, fontSize: 12}
-                        }, "域名"), y.a.createElement(f["a"], {
-                            size: "small",
-                            checked: parseInt(void 0 === e.app_domain_replace ? 1 : e.app_domain_replace),
-                            onClick: ()=>this.update(e, "app_domain_replace", parseInt(void 0 === e.app_domain_replace ? 1 : e.app_domain_replace) ? 0 : 1)
                         }), y.a.createElement(a["a"], {
                             type: "vertical"
                         }), y.a.createElement("span", null, I(e)))

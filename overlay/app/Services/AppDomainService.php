@@ -177,9 +177,13 @@ class AppDomainService
         }
 
         $rule = $this->matchRule($user, $server);
-        $replaceHost = $rule && (int) $rule->replace_node_host === 1
-            ? $this->normalizeHost($rule->domain)
-            : $this->resolveGlobalReplaceHost();
+        if ($rule && (int) $rule->replace_node_host === 1) {
+            $replaceHost = $this->normalizeHost($rule->domain);
+        } elseif ((int) config('v2board.app_domain_rule_enable', 0) === 1 && $this->rulesTableExists()) {
+            $replaceHost = '';
+        } else {
+            $replaceHost = $this->resolveGlobalReplaceHost();
+        }
 
         if ($replaceHost !== '') {
             $server['host'] = $replaceHost;

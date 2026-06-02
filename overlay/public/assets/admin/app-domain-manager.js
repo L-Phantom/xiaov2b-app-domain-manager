@@ -142,8 +142,13 @@
       ".adm-checks{display:flex;gap:8px;flex-wrap:wrap;}",
       ".adm-check{display:inline-flex;align-items:center;gap:6px;height:30px;padding:0 10px;border:1px solid #d8dde8;border-radius:4px;font-size:13px;color:#354052;}",
       ".adm-check input{margin:0;}",
-      ".adm-node-list{max-height:150px;overflow:auto;padding:10px;border:1px solid #e3e7ef;border-radius:6px;background:#fbfcfe;}",
-      ".adm-node-list .adm-check{margin-bottom:8px;background:#fff;}",
+      ".adm-node-tools{display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap;}",
+      ".adm-node-table-wrap{max-height:260px;overflow:auto;border:1px solid #eef0f4;border-radius:6px;background:#fff;}",
+      ".adm-node-table{width:100%;border-collapse:collapse;min-width:680px;}",
+      ".adm-node-table th{height:36px;background:#f8f9fc;color:#566070;font-size:12px;font-weight:600;text-align:left;padding:0 10px;border-bottom:1px solid #eef0f4;white-space:nowrap;}",
+      ".adm-node-table td{font-size:13px;color:#2f3542;padding:9px 10px;border-bottom:1px solid #f0f2f5;vertical-align:middle;}",
+      ".adm-node-table tr:last-child td{border-bottom:0;}",
+      ".adm-node-table code{font-size:12px;color:#4b5563;}",
       "@media(max-width:900px){.adm-page{padding:0 12px 18px}.adm-grid{display:block}.adm-span-4,.adm-span-6,.adm-span-8,.adm-span-12{grid-column:auto}.adm-block-body{padding:14px}.adm-toolbar{align-items:flex-start}.adm-actions{width:100%}.adm-form-control.adm-filter{width:100%!important}}"
     ].join("\n");
     document.head.appendChild(style);
@@ -239,9 +244,7 @@
     var html = [];
     html.push(tag("组 " + selectedText(rule.user_group_ids, options.user_groups), "gray"));
     html.push(tag("套餐 " + selectedText(rule.plan_ids, options.plans), "gray"));
-    html.push(tag("类型 " + (rule.server_types.length ? rule.server_types.join(" / ") : "全部"), "gray"));
-    if (rule.server_ids.length) html.push(tag("节点 " + selectedNodeText(rule.server_ids, rule.server_types), "gray"));
-    if (rule.protocols.length) html.push(tag("协议 " + rule.protocols.join(" / "), "gray"));
+    html.push(tag("节点 " + selectedNodeText(rule.server_ids, rule.server_types), "gray"));
     return '<div class="adm-tags">' + html.join("") + '</div>';
   }
 
@@ -312,17 +315,13 @@
   function renderConfig(config) {
     return [
       '<div class="adm-grid">',
-      '  <div class="adm-span-4">' + switchField("全局节点入口", "adm_domain_enable", config.app_domain_enable) + '</div>',
-      '  <div class="adm-span-4">' + switchField("规则匹配", "adm_rule_enable", config.app_domain_rule_enable) + '</div>',
+      '  <div class="adm-span-4">' + switchField("入口域名规则", "adm_rule_enable", config.app_domain_rule_enable) + '</div>',
       '  <div class="adm-span-4">' + switchField("API 多域名", "adm_api_enable", config.app_api_domain_enable) + '</div>',
-      '  <div class="adm-span-4">' + field("入口域名", "adm_replace_host", config.app_domain_replace_host, "", "edge.example.com") + '</div>',
+      '  <div class="adm-span-4">' + switchField("加密下发", "adm_encrypt_enable", config.app_api_domain_encrypt_enable) + '</div>',
       '  <div class="adm-span-4">' + field("App 订阅域名", "adm_public_host", config.app_domain_public_host, "", "app.example.com") + '</div>',
       '  <div class="adm-span-4">' + field("订阅路径", "adm_subscribe_path", config.app_domain_subscribe_path, "", "/api/v1/client/custom_app/subscribe") + '</div>',
+      '  <div class="adm-span-4">' + field("加密密钥", "adm_encrypt_key", config.app_api_domain_encrypt_key, "", "") + '</div>',
       '  <div class="adm-span-6">' + textarea("API 域名池", "adm_api_hosts", config.app_api_domain_hosts.join("\\n"), "api1.example.com\\napi2.example.com") + '</div>',
-      '  <div class="adm-span-6">',
-           switchField("加密下发", "adm_encrypt_enable", config.app_api_domain_encrypt_enable),
-           field("加密密钥", "adm_encrypt_key", config.app_api_domain_encrypt_key, "", ""),
-      '  </div>',
       '  <div class="adm-span-6"><label class="adm-form-label">订阅预览</label><div class="adm-preview" id="adm-preview-subscribe">' + escapeHtml(subscribePreview(config)) + '</div></div>',
       '  <div class="adm-span-6"><label class="adm-form-label">API 预览</label><div class="adm-preview" id="adm-preview-api">' + escapeHtml(apiPreview(config)) + '</div></div>',
       '</div>'
@@ -345,12 +344,12 @@
       '    </div>',
       '  </div>',
       '  <div class="adm-block">',
-      '    <div class="adm-block-header"><h3 class="adm-block-title">全局配置</h3></div>',
+      '    <div class="adm-block-header"><h3 class="adm-block-title">基础配置</h3></div>',
       '    <div class="adm-block-body">' + renderConfig(config) + '</div>',
       '  </div>',
       '  <div class="adm-block">',
       '    <div class="adm-block-header">',
-      '      <h3 class="adm-block-title">分发规则</h3>',
+      '      <h3 class="adm-block-title">入口域名规则</h3>',
       '      <div class="adm-actions">',
       '        <input class="adm-form-control adm-filter" style="width:220px" id="adm-rule-filter" value="' + escapeHtml(state.filter) + '" placeholder="搜索规则">',
       '        <select class="adm-form-control adm-filter" style="width:160px" id="adm-group-filter">' + renderGroupOptions() + '</select>',
@@ -359,7 +358,7 @@
       '    </div>',
       '    <div class="adm-block-body">',
       '      <div class="adm-table-wrap"><table class="adm-table">',
-      '        <thead><tr><th>排序</th><th>规则</th><th>状态</th><th>域名</th><th>范围</th><th>覆盖</th><th>排序</th><th>操作</th></tr></thead>',
+      '        <thead><tr><th>排序</th><th>规则</th><th>状态</th><th>入口域名</th><th>匹配对象</th><th>下发</th><th>排序</th><th>操作</th></tr></thead>',
       '        <tbody>' + renderRuleRows() + '</tbody>',
       '      </table></div>',
       '    </div>',
@@ -409,21 +408,30 @@
     }
     selectedIds = Array.isArray(selectedIds) ? selectedIds.map(String) : [];
     selectedTypes = Array.isArray(selectedTypes) ? selectedTypes : [];
-    return '<div class="adm-node-list">' + nodes.map(function (node) {
+    return '<div class="adm-node-tools">' +
+      '<input class="adm-form-control" style="width:220px" id="adm_node_filter" placeholder="搜索节点">' +
+      '<button class="adm-btn" id="adm_node_select_visible" type="button">' + icon("check") + '选择当前</button>' +
+      '<button class="adm-btn" id="adm_node_clear" type="button">' + icon("close") + '清空节点</button>' +
+    '</div>' +
+    '<div class="adm-node-table-wrap"><table class="adm-node-table">' +
+      '<thead><tr><th style="width:42px"><input type="checkbox" id="adm_node_check_all"></th><th style="width:90px">节点ID</th><th>节点</th><th style="width:130px">类型</th><th>地址</th></tr></thead>' +
+      '<tbody>' + nodes.map(function (node) {
       var checked = selectedIds.indexOf(String(node.id)) !== -1 && (!selectedTypes.length || selectedTypes.indexOf(node.type) !== -1);
-      return '<label class="adm-check" title="' + escapeHtml(node.host || "") + '">' +
-        '<input type="checkbox" name="adm_rule_nodes" value="' + escapeHtml(node.id) + '" data-type="' + escapeHtml(node.type) + '"' + (checked ? " checked" : "") + '> ' +
-        escapeHtml(node.type + " #" + node.id + " " + node.name) +
-      '</label>';
-    }).join("") + '</div>';
+      var searchText = [node.id, node.type, node.name, node.host].join(" ").toLowerCase();
+      return '<tr data-node-row="1" data-search="' + escapeHtml(searchText) + '">' +
+        '<td><input type="checkbox" name="adm_rule_nodes" value="' + escapeHtml(node.id) + '" data-type="' + escapeHtml(node.type) + '"' + (checked ? " checked" : "") + '></td>' +
+        '<td>#' + escapeHtml(node.id) + '</td>' +
+        '<td>' + escapeHtml(node.name) + '</td>' +
+        '<td>' + tag(node.type, "gray") + '</td>' +
+        '<td><code>' + escapeHtml(node.host || "-") + '</code></td>' +
+      '</tr>';
+    }).join("") + '</tbody></table></div>';
   }
 
   function renderModal() {
     if (!state.modalRule) return "";
     var rule = state.modalRule;
     var options = state.options || {};
-    var serverTypes = (options.server_types || []).map(function (value) { return { value: value, label: value }; });
-    var protocols = (options.protocols || []).map(function (value) { return { value: value, label: value }; });
     return [
       '<div class="adm-modal-mask" id="adm-rule-modal">',
       '  <div class="adm-modal">',
@@ -434,11 +442,9 @@
       '        <div class="adm-span-6">' + field("入口域名", "adm_rule_domain", rule.domain, "", "edge.example.com") + '</div>',
       '        <div class="adm-span-3">' + field("排序", "adm_rule_sort", rule.sort, "", "") + '</div>',
       '        <div class="adm-span-9">' + field("备注", "adm_rule_remark", rule.remark, "", "") + '</div>',
-      '        <div class="adm-span-12"><div class="adm-modal-switches">' + switchInline("启用", "adm_rule_enable_input", rule.enable) + switchInline("覆盖节点入口", "adm_rule_replace_node", rule.replace_node_host) + switchInline("覆盖订阅入口", "adm_rule_replace_subscribe", rule.replace_subscribe_host) + '</div></div>',
+      '        <div class="adm-span-12"><div class="adm-modal-switches">' + switchInline("启用", "adm_rule_enable_input", rule.enable) + switchInline("同步订阅入口", "adm_rule_replace_subscribe", rule.replace_subscribe_host) + '</div></div>',
       '        <div class="adm-span-12"><label class="adm-form-label">用户组</label>' + renderCheckboxes("adm_rule_groups", options.user_groups || [], rule.user_group_ids) + '</div>',
       '        <div class="adm-span-12"><label class="adm-form-label">套餐</label>' + renderCheckboxes("adm_rule_plans", options.plans || [], rule.plan_ids) + '</div>',
-      '        <div class="adm-span-12"><label class="adm-form-label">节点类型</label>' + renderCheckboxes("adm_rule_types", serverTypes, rule.server_types) + '</div>',
-      '        <div class="adm-span-12"><label class="adm-form-label">协议</label>' + renderCheckboxes("adm_rule_protocols", protocols, rule.protocols) + '</div>',
       '        <div class="adm-span-12"><label class="adm-form-label">节点</label>' + renderNodeChecks(rule.server_ids, rule.server_types) + '</div>',
       '      </div>',
       '    </div>',
@@ -484,6 +490,45 @@
     if (close) close.addEventListener("click", closeModal);
     if (cancel) cancel.addEventListener("click", closeModal);
     if (save) save.addEventListener("click", saveRuleForm);
+    bindNodeTools();
+  }
+
+  function bindNodeTools() {
+    var filter = document.getElementById("adm_node_filter");
+    var selectVisible = document.getElementById("adm_node_select_visible");
+    var clear = document.getElementById("adm_node_clear");
+    var checkAll = document.getElementById("adm_node_check_all");
+    var rows = function () {
+      return Array.prototype.slice.call(document.querySelectorAll("[data-node-row]"));
+    };
+    var visibleRows = function () {
+      return rows().filter(function (row) { return row.style.display !== "none"; });
+    };
+    if (filter) filter.addEventListener("input", function () {
+      var q = String(filter.value || "").trim().toLowerCase();
+      rows().forEach(function (row) {
+        row.style.display = !q || String(row.getAttribute("data-search") || "").indexOf(q) !== -1 ? "" : "none";
+      });
+    });
+    if (selectVisible) selectVisible.addEventListener("click", function () {
+      visibleRows().forEach(function (row) {
+        var input = row.querySelector('input[name="adm_rule_nodes"]');
+        if (input) input.checked = true;
+      });
+    });
+    if (clear) clear.addEventListener("click", function () {
+      rows().forEach(function (row) {
+        var input = row.querySelector('input[name="adm_rule_nodes"]');
+        if (input) input.checked = false;
+      });
+      if (checkAll) checkAll.checked = false;
+    });
+    if (checkAll) checkAll.addEventListener("change", function () {
+      visibleRows().forEach(function (row) {
+        var input = row.querySelector('input[name="adm_rule_nodes"]');
+        if (input) input.checked = checkAll.checked;
+      });
+    });
   }
 
   function updatePreview() {
@@ -499,18 +544,24 @@
     return el && el.checked ? 1 : 0;
   }
 
+  function checkedOrConfig(id, key, config) {
+    var el = document.getElementById(id);
+    if (!el) return Number(config[key] || 0);
+    return el.checked ? 1 : 0;
+  }
+
   function collectConfig(readDom) {
     var config = state.config || normalizeConfig({});
-    if (readDom === false && !document.getElementById("adm_domain_enable")) return config;
+    if (readDom === false && !document.getElementById("adm_rule_enable")) return config;
     return {
-      app_domain_enable: checked("adm_domain_enable"),
-      app_domain_rule_enable: checked("adm_rule_enable"),
+      app_domain_enable: checkedOrConfig("adm_domain_enable", "app_domain_enable", config),
+      app_domain_rule_enable: checkedOrConfig("adm_rule_enable", "app_domain_rule_enable", config),
       app_domain_public_host: (document.getElementById("adm_public_host") || {}).value || config.app_domain_public_host,
       app_domain_subscribe_path: (document.getElementById("adm_subscribe_path") || {}).value || config.app_domain_subscribe_path,
       app_domain_replace_host: (document.getElementById("adm_replace_host") || {}).value || config.app_domain_replace_host,
-      app_api_domain_enable: checked("adm_api_enable"),
+      app_api_domain_enable: checkedOrConfig("adm_api_enable", "app_api_domain_enable", config),
       app_api_domain_hosts: ((document.getElementById("adm_api_hosts") || {}).value || "").split(/\n+/).map(normalizeHost).filter(Boolean),
-      app_api_domain_encrypt_enable: checked("adm_encrypt_enable"),
+      app_api_domain_encrypt_enable: checkedOrConfig("adm_encrypt_enable", "app_api_domain_encrypt_enable", config),
       app_api_domain_encrypt_key: (document.getElementById("adm_encrypt_key") || {}).value || config.app_api_domain_encrypt_key
     };
   }
@@ -542,7 +593,7 @@
   function collectRule() {
     var current = state.modalRule || emptyRule();
     var selectedNodes = selectedNodeValues();
-    var selectedTypes = selectedValues("adm_rule_types");
+    var selectedTypes = [];
     selectedNodes.forEach(function (node) {
       if (node.type && selectedTypes.indexOf(node.type) === -1) selectedTypes.push(node.type);
     });
@@ -556,8 +607,8 @@
       plan_ids: selectedValues("adm_rule_plans").map(Number),
       server_types: selectedTypes,
       server_ids: selectedNodes.map(function (node) { return node.id; }),
-      protocols: selectedValues("adm_rule_protocols"),
-      replace_node_host: checked("adm_rule_replace_node"),
+      protocols: [],
+      replace_node_host: 1,
       replace_subscribe_host: checked("adm_rule_replace_subscribe"),
       remark: (document.getElementById("adm_rule_remark") || {}).value || ""
     };

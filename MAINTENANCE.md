@@ -120,6 +120,7 @@ This means panel upgrades do not have to preserve App-specific full-meta logic f
 - admin route `/#/server/app-domain`
 - `app_show=0` nodes are not returned to App-only subscription
 - `app_domain_replace=0` nodes keep their original host when global App domain replacement is enabled
+- when `app_domain_rule_enable=1`, unmatched nodes keep their original host instead of falling back to the global replacement host
 - normal web subscription keeps original behavior and does not use the App-only template
 
 ## Future Hardening
@@ -139,3 +140,10 @@ This means panel upgrades do not have to preserve App-specific full-meta logic f
 - The overlay admin shell now calculates an `asset_version` from the newest mtime of the admin JS/CSS assets.
 - This means that after `umi.js`, `app-domain-manager.js`, or other admin assets are overwritten by a patch, the browser/CDN URL changes automatically.
 - Installer behavior should prefer a full Webman restart after overlay install; a `SIGUSR1` reload may leave old routes or old static shell state in memory on upgraded panels.
+
+## App Domain Rule UI
+
+- Daily入口域名分发 should be managed from `入口域名规则`, not from node management.
+- Rule forms should stay close to native xiaov2b admin behavior: rule name,入口域名, user groups, plans, and a node table populated from existing server tables.
+- Protocol/type filters are stored for compatibility, but normal UI should derive them from selected nodes and avoid exposing them as separate required concepts.
+- The node management `app_domain_replace` field remains available to existing controllers and old data, but its visible `域名替换` table/mobile controls are hidden to avoid a second competing policy surface.

@@ -7,7 +7,7 @@
 - 增加 `App 专用订阅`、`App bootstrap`、`App API 多域名`
 - 增加 `App 专用完整 Meta 订阅`，供客户端第二阶段静默升级使用
 - 在节点管理里增加 `App可见` 开关
-- 在节点管理里增加 App 域名替换开关，让单个节点可选择是否参与入口域名替换
+- 入口域名替换由规则页统一管理，可按节点、套餐、权限组分发
 - 让普通网页订阅与 App 专用订阅分流
 - 面板升级后可再次一键部署
 
@@ -158,7 +158,13 @@ php82 scripts/scenario_verify.php /path/to/v2board-root app-edge.example.com
 - `POST /api/v1/{secure_path}/server/app-domain/rule/sort`
 - `GET /api/v1/{secure_path}/server/app-domain/options`
 
-规则表存在且 `app_domain_rule_enable=1` 时，`AppDomainService` 会优先按规则匹配用户组、套餐、节点类型、节点 ID 和协议范围。没有命中规则时自动回落全局 App 域名配置。
+规则表存在且 `app_domain_rule_enable=1` 时，`AppDomainService` 会优先按规则匹配用户组、套餐和节点范围。没有命中规则的节点保持原始入口地址，不再自动回落全局 App 域名配置；旧的全局替换配置仅在规则功能关闭时作为兼容路径生效。
+
+后台 UI 的日常使用方式：
+- 在 `入口域名规则` 中填写入口域名。
+- 勾选需要命中的用户组、套餐和节点；节点列表直接来自现有节点表。
+- 不勾选节点时表示该规则对匹配用户范围内的全部节点生效。
+- 节点管理页不再展示独立的 `域名替换` 列，避免形成第二套入口域名策略；底层字段仍保留用于旧站点兼容和紧急兜底。
 
 后台入口：
 - 主入口：`/{secure_path}#/server/app-domain`
