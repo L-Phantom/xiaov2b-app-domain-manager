@@ -49,6 +49,7 @@ if ($user) {
     $appServers = $serverService->getAvailableAppServers($user);
     $bootstrap = $appDomainService->buildBootstrapPayload($user);
     $versionBootstrap = $appDomainService->buildVersionBootstrap();
+    $options = $appDomainService->getOptions();
 
     $result['user'] = [
         'id' => $user->id,
@@ -60,7 +61,8 @@ if ($user) {
         'bootstrap_has_subscribe_url' => isset($bootstrap['subscribe_url']),
         'bootstrap_api_url_count' => count($bootstrap['api_urls'] ?? []),
         'version_bootstrap_has_path' => ($versionBootstrap['bootstrap_path'] ?? '') === '/api/v1/client/app/bootstrap',
-        'options_have_rule_table_state' => array_key_exists('rules_table_exists', $appDomainService->getOptions()),
+        'options_have_rule_table_state' => array_key_exists('rules_table_exists', $options),
+        'options_node_count' => count($options['nodes'] ?? []),
     ];
     $result['servers'] = [
         'all_count' => count($allServers),

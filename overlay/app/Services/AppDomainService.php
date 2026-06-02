@@ -26,6 +26,17 @@ class AppDomainService
         'v2node',
     ];
 
+    protected const SERVER_OPTION_TABLES = [
+        'shadowsocks' => 'v2_server_shadowsocks',
+        'vmess' => 'v2_server_vmess',
+        'trojan' => 'v2_server_trojan',
+        'vless' => 'v2_server_vless',
+        'hysteria' => 'v2_server_hysteria',
+        'tuic' => 'v2_server_tuic',
+        'anytls' => 'v2_server_anytls',
+        'v2node' => 'v2_server_v2node',
+    ];
+
     public function getConfig(): array
     {
         return [
@@ -266,6 +277,7 @@ class AppDomainService
             'protocols' => self::SUPPORTED_SERVER_TYPES,
             'user_groups' => class_exists(ServerGroup::class) && $this->tableExists('v2_server_group') ? ServerGroup::orderBy('id', 'ASC')->get(['id', 'name'])->toArray() : [],
             'plans' => class_exists(Plan::class) && $this->tableExists('v2_plan') ? Plan::orderBy('sort', 'ASC')->get(['id', 'name'])->toArray() : [],
+            'nodes' => $this->getNodeOptions(),
             'rules_table_exists' => $this->rulesTableExists(),
         ];
     }
@@ -446,6 +458,36 @@ class AppDomainService
         }
 
         return User::where('token', $token)->first();
+    }
+
+    protected function getNodeOptions(): array
+    {
+        $nodes = [];
+        foreach (self::SERVER_OPTION_TABLES as $type => $table) {
+            if (!$this->tableExists($table)) {
+                continue;
+            }
+            $columns = ['id', 'name'];
+            if (Schema::hasColumn($table, 'host')) {
+                $columns[] = 'host';
+            }
+            $query = DB::table($table)->select($columns);
+            if (Schema::hasColumn($table, 'sort')) {
+                $query->orderBy('sort', 'ASC');
+            }
+            $rows = $query->orderBy('id', 'ASC')->get();
+            foreach ($rows as $row) {
+                $nodes[] = [
+                    'id' => (int) $row->id,
+                    'type' => $type,
+                    'name' => $row->name,
+                    'host' => $row->host ?? '',
+                    'label' => sprintf('%s #%s %s', $type, $row->id, $row->name),
+                ];
+            }
+        }
+
+        return $nodes;
     }
 
     protected function buildApiUrls(array $apiHosts): array
