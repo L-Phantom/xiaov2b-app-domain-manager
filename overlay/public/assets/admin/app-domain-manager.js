@@ -104,8 +104,10 @@
       ".adm-field{margin-bottom:14px;}",
       ".adm-switch-line{height:34px;display:flex;align-items:center;gap:8px;white-space:nowrap;}",
       ".adm-switch-line .adm-status{min-height:0;white-space:nowrap;line-height:20px;}",
-      ".adm-switch-pack{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;align-items:end;}",
-      ".adm-switch-pack .adm-field{margin-bottom:0;}",
+      ".adm-modal-switches{display:flex;align-items:center;gap:20px;flex-wrap:wrap;padding:2px 0 8px;}",
+      ".adm-modal-switch{display:inline-flex;align-items:center;gap:8px;min-width:150px;white-space:nowrap;}",
+      ".adm-modal-switch-label{font-size:13px;color:#4a5568;font-weight:500;white-space:nowrap;}",
+      ".adm-modal-switch .adm-status{min-height:0;line-height:20px;white-space:nowrap;}",
       ".adm-switch{position:relative;width:38px;height:20px;display:inline-block;}",
       ".adm-switch input{display:none;}",
       ".adm-switch span{position:absolute;inset:0;background:#c6ccd8;border-radius:20px;transition:.18s;}",
@@ -211,6 +213,11 @@
   function switchField(label, id, checked) {
     return '<div class="adm-field"><label class="adm-form-label">' + escapeHtml(label) + '</label>' +
       '<div class="adm-switch-line">' + switchHtml(id, checked) + '<span class="adm-status">' + (checked ? "开启" : "关闭") + '</span></div></div>';
+  }
+
+  function switchInline(label, id, checked) {
+    return '<div class="adm-modal-switch"><span class="adm-modal-switch-label">' + escapeHtml(label) + '</span>' +
+      switchHtml(id, checked) + '<span class="adm-status">' + (checked ? "开启" : "关闭") + '</span></div>';
   }
 
   function tag(text, cls) {
@@ -426,13 +433,13 @@
       '        <div class="adm-span-6">' + field("规则名称", "adm_rule_name", rule.name, "", "") + '</div>',
       '        <div class="adm-span-6">' + field("入口域名", "adm_rule_domain", rule.domain, "", "edge.example.com") + '</div>',
       '        <div class="adm-span-3">' + field("排序", "adm_rule_sort", rule.sort, "", "") + '</div>',
-      '        <div class="adm-span-9"><div class="adm-switch-pack">' + switchField("启用", "adm_rule_enable_input", rule.enable) + switchField("覆盖节点入口", "adm_rule_replace_node", rule.replace_node_host) + switchField("覆盖订阅入口", "adm_rule_replace_subscribe", rule.replace_subscribe_host) + '</div></div>',
+      '        <div class="adm-span-9">' + field("备注", "adm_rule_remark", rule.remark, "", "") + '</div>',
+      '        <div class="adm-span-12"><div class="adm-modal-switches">' + switchInline("启用", "adm_rule_enable_input", rule.enable) + switchInline("覆盖节点入口", "adm_rule_replace_node", rule.replace_node_host) + switchInline("覆盖订阅入口", "adm_rule_replace_subscribe", rule.replace_subscribe_host) + '</div></div>',
       '        <div class="adm-span-12"><label class="adm-form-label">用户组</label>' + renderCheckboxes("adm_rule_groups", options.user_groups || [], rule.user_group_ids) + '</div>',
       '        <div class="adm-span-12"><label class="adm-form-label">套餐</label>' + renderCheckboxes("adm_rule_plans", options.plans || [], rule.plan_ids) + '</div>',
       '        <div class="adm-span-12"><label class="adm-form-label">节点类型</label>' + renderCheckboxes("adm_rule_types", serverTypes, rule.server_types) + '</div>',
       '        <div class="adm-span-12"><label class="adm-form-label">协议</label>' + renderCheckboxes("adm_rule_protocols", protocols, rule.protocols) + '</div>',
       '        <div class="adm-span-12"><label class="adm-form-label">节点</label>' + renderNodeChecks(rule.server_ids, rule.server_types) + '</div>',
-      '        <div class="adm-span-6">' + field("备注", "adm_rule_remark", rule.remark, "", "") + '</div>',
       '      </div>',
       '    </div>',
       '    <div class="adm-modal-foot">',
