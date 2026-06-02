@@ -21039,9 +21039,9 @@
                             className: "nav-main-link-icon si si-layers"
                         })
                     }, {
-                        title: "App\u57df\u540d\u7ba1\u7406",
+                        title: "\u4e2d\u8f6c\u57df\u540d\u5206\u53d1",
                         type: "item",
-                        href: "/server/app-domain-plugin",
+                        href: "/server/app-domain",
                         icon: o.a.createElement("i", {
                             className: "nav-main-link-icon si si-globe"
                         })
@@ -82351,6 +82351,10 @@
             exact: !0,
             component: n("uzXD").default
         }, {
+            path: "/server/app-domain",
+            exact: !0,
+            component: n("uzXD").default
+        }, {
             path: "/server/app-domain-plugin",
             exact: !0,
             component: n("uzXD").default
@@ -106639,7 +106643,7 @@
                 }
             }
             componentDidMount() {
-                if (this.props.location && "/server/app-domain-plugin" === this.props.location.pathname)
+                if (this.props.location && ("/server/app-domain-plugin" === this.props.location.pathname || "/server/app-domain" === this.props.location.pathname))
                     return;
                 this.props.dispatch({
                     type: "serverManage/getNodes"

@@ -160,6 +160,10 @@ php82 scripts/scenario_verify.php /path/to/v2board-root app-edge.example.com
 
 规则表存在且 `app_domain_rule_enable=1` 时，`AppDomainService` 会优先按规则匹配用户组、套餐、节点类型、节点 ID 和协议范围。没有命中规则时自动回落全局 App 域名配置。
 
+后台入口：
+- 主入口：`/{secure_path}#/server/app-domain`
+- 兼容入口：`/{secure_path}/server/app-domain-plugin` 会跳到新入口
+
 ## 给 FlClash / 自研客户端的联调入口
 
 当前 App 端相关接口：

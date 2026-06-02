@@ -69,8 +69,12 @@ Route::get('/' . config('v2board.secure_path', config('v2board.frontend_admin_pa
     ]);
 });
 
+Route::get('/' . config('v2board.secure_path', config('v2board.frontend_admin_path', hash('crc32b', config('app.key')))) . '/server/app-domain', function () {
+    return redirect('/' . config('v2board.secure_path', config('v2board.frontend_admin_path', hash('crc32b', config('app.key')))) . '#/server/app-domain');
+});
+
 Route::get('/' . config('v2board.secure_path', config('v2board.frontend_admin_path', hash('crc32b', config('app.key')))) . '/server/app-domain-plugin', function () {
-    return redirect('/' . config('v2board.secure_path', config('v2board.frontend_admin_path', hash('crc32b', config('app.key')))) . '#/server/app-domain-plugin');
+    return redirect('/' . config('v2board.secure_path', config('v2board.frontend_admin_path', hash('crc32b', config('app.key')))) . '#/server/app-domain');
 });
 
 if (!empty(config('v2board.subscribe_path'))) {

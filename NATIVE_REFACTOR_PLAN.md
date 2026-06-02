@@ -523,12 +523,12 @@ bash verify.sh /path/to/site https://panel.example.com secure_path user_token ad
 
 任务：
 
-- 重写 `app-domain-manager.js` 的 DOM 结构和样式。
-- 尽量复用后台现有 class。
-- 菜单命名从 `App域名管理` 调整为更产品化的名称：
-  - `中转域名分发`
-  - 或 `App入口分发`
-- 路由从 `/server/app-domain-plugin` 迁移到 `/server/app-domain`，旧路由重定向兼容。
+- 已重写 `app-domain-manager.js` 的 DOM 结构和样式。
+- 已尽量复用后台现有 `block` / `btn` / `form-control` / `table` 风格。
+- 菜单命名已从 `App域名管理` 调整为 `中转域名分发`。
+- 主路由已迁移到 `/server/app-domain`，旧 `/server/app-domain-plugin` 继续重定向兼容。
+- 页面已拆成全局配置、分发规则表、规则编辑弹窗。
+- 规则保存、删除、排序后会重新拉取列表。
 
 验收：
 

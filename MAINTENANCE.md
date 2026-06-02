@@ -114,6 +114,10 @@ This means panel upgrades do not have to preserve App-specific full-meta logic f
 - `custom_app/subscribe?flag=app_meta`
 - admin `server/app-domain/fetch`
 - admin `server/app-domain/save`
+- admin `server/app-domain/config`
+- admin `server/app-domain/rules`
+- admin `server/app-domain/options`
+- admin route `/#/server/app-domain`
 - `app_show=0` nodes are not returned to App-only subscription
 - `app_domain_replace=0` nodes keep their original host when global App domain replacement is enabled
 - normal web subscription keeps original behavior and does not use the App-only template
