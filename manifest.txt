@@ -15,6 +15,7 @@ app/Http/Requests/Admin/ServerTrojanUpdate.php
 app/Http/Requests/Admin/ServerVmessUpdate.php
 app/Http/Routes/V1/AdminRoute.php
 app/Http/Routes/V1/ClientRoute.php
+app/Services/AppDomainService.php
 app/Services/ServerService.php
 app/Utils/Helper.php
 public/assets/admin/umi.js

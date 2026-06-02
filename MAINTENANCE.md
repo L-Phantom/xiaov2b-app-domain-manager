@@ -14,6 +14,7 @@ This repository should keep App-specific behavior isolated to a small overlay se
 - existing App domain management files under:
   - `overlay/app/Http/Controllers/V1/Client/AppController.php`
   - `overlay/app/Http/Routes/V1/ClientRoute.php`
+  - `overlay/app/Services/AppDomainService.php`
   - `overlay/app/Services/ServerService.php`
   - `overlay/app/Utils/Helper.php`
   - admin-facing App domain management overlay files

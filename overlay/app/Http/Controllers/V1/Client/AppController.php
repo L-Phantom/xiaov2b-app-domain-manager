@@ -3,9 +3,9 @@
 namespace App\Http\Controllers\V1\Client;
 
 use App\Http\Controllers\Controller;
+use App\Services\AppDomainService;
 use App\Services\ServerService;
 use App\Services\UserService;
-use App\Utils\Helper;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\File;
 use Symfony\Component\Yaml\Yaml;
@@ -70,50 +70,14 @@ class AppController extends Controller
             abort(403, '用户不可用');
         }
 
-        $apiHosts = array_values(array_filter(array_map('trim', (array) config('v2board.app_api_domain_hosts', []))));
-        $apiUrls = array_map(function ($host) {
-            return sprintf('https://%s/api/v1/client/app', $host);
-        }, $apiHosts);
-
-        $payload = [
-            'subscribe_url' => Helper::getAppSubscribeUrl($user['token']),
-            'subscribe_path' => config('v2board.app_domain_subscribe_path', '/api/v1/client/custom_app/subscribe'),
-            'replace_host' => config('v2board.app_domain_replace_host'),
-            'api_domain_enable' => (int) config('v2board.app_api_domain_enable', 0),
-            'api_domains' => $apiHosts,
-            'api_urls' => $apiUrls,
-            'app_config_url' => '/api/v1/client/app/getConfig',
-            'app_version_url' => '/api/v1/client/app/getVersion',
-        ];
-
-        if ((int) config('v2board.app_api_domain_encrypt_enable', 0) === 1) {
-            $encrypted = Helper::encryptAppPayload($apiUrls, (string) config('v2board.app_api_domain_encrypt_key', ''));
-            if ($encrypted) {
-                $payload['encrypted_api_urls'] = $encrypted;
-            }
-        }
-
         return response([
-            'data' => $payload
+            'data' => (new AppDomainService())->buildBootstrapPayload($user)
         ]);
     }
 
     public function getVersion(Request $request)
     {
-        $apiHosts = array_values(array_filter(array_map('trim', (array) config('v2board.app_api_domain_hosts', []))));
-        $bootstrap = [
-            'api_domain_enable' => (int) config('v2board.app_api_domain_enable', 0),
-            'api_domains' => $apiHosts,
-            'bootstrap_path' => '/api/v1/client/app/bootstrap',
-        ];
-        if ((int) config('v2board.app_api_domain_encrypt_enable', 0) === 1) {
-            $encrypted = Helper::encryptAppPayload(array_map(function ($host) {
-                return sprintf('https://%s/api/v1/client/app', $host);
-            }, $apiHosts), (string) config('v2board.app_api_domain_encrypt_key', ''));
-            if ($encrypted) {
-                $bootstrap['encrypted_api_urls'] = $encrypted;
-            }
-        }
+        $bootstrap = (new AppDomainService())->buildVersionBootstrap();
 
         if (strpos($request->header('user-agent'), 'tidalab/4.0.0') !== false
             || strpos($request->header('user-agent'), 'tunnelab/4.0.0') !== false

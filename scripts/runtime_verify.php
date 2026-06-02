@@ -17,6 +17,9 @@ $kernel = $app->make(Illuminate\Contracts\Console\Kernel::class);
 $kernel->bootstrap();
 
 $result = [
+    'services' => [
+        'app_domain_service_exists' => class_exists(\App\Services\AppDomainService::class),
+    ],
     'config' => [
         'app_domain_enable' => (int) config('v2board.app_domain_enable', 0),
         'app_domain_public_host' => (string) config('v2board.app_domain_public_host', ''),
@@ -35,13 +38,22 @@ $result = [
 $user = \App\Models\User::where('banned', 0)->orderBy('id')->first();
 if ($user) {
     $serverService = new \App\Services\ServerService();
+    $appDomainService = new \App\Services\AppDomainService();
     $allServers = $serverService->getAvailableServers($user);
     $appServers = $serverService->getAvailableAppServers($user);
+    $bootstrap = $appDomainService->buildBootstrapPayload($user);
+    $versionBootstrap = $appDomainService->buildVersionBootstrap();
 
     $result['user'] = [
         'id' => $user->id,
         'email' => $user->email,
-        'token' => $user->token,
+        'has_token' => !empty($user->token),
+    ];
+    $result['service_payload'] = [
+        'admin_config_has_preview' => isset($appDomainService->getAdminConfig()['preview']),
+        'bootstrap_has_subscribe_url' => isset($bootstrap['subscribe_url']),
+        'bootstrap_api_url_count' => count($bootstrap['api_urls'] ?? []),
+        'version_bootstrap_has_path' => ($versionBootstrap['bootstrap_path'] ?? '') === '/api/v1/client/app/bootstrap',
     ];
     $result['servers'] = [
         'all_count' => count($allServers),

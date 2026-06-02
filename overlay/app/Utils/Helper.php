@@ -1,6 +1,7 @@
 <?php
 
 namespace App\Utils;
+use App\Services\AppDomainService;
 use App\Models\User;
 use Illuminate\Support\Facades\Cache;
 
@@ -144,16 +145,7 @@ class Helper
 
     public static function getAppSubscribeUrl($token)
     {
-        $path = config('v2board.app_domain_subscribe_path', '/api/v1/client/custom_app/subscribe');
-        if (empty($path)) {
-            $path = '/api/v1/client/custom_app/subscribe';
-        }
-        $path = "{$path}?token={$token}";
-        $host = trim((string) config('v2board.app_domain_public_host', ''));
-        if ($host !== '') {
-            return 'https://' . $host . $path;
-        }
-        return url($path);
+        return (new AppDomainService())->buildSubscribeUrl((string) $token);
     }
 
     public static function encryptAppPayload(array $payload, string $key): ?string

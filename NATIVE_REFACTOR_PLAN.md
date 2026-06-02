@@ -470,6 +470,14 @@ bash verify.sh /path/to/site https://panel.example.com secure_path user_token ad
 - 新增 `AppDomainService`。
 - `ServerService` 和 `AppController` 不再直接处理复杂域名规则。
 
+当前进度：
+
+- 已新增 `App\Services\AppDomainService`，集中处理配置读取、保存、host/path 规范化、App 订阅 URL、bootstrap payload、多 API 域名加密字段和 App 节点 host 替换。
+- `AppController@getBootstrap` / `getVersion` 已改为调用 service，Controller 只保留请求可用性判断和版本响应结构。
+- `AppDomainController@fetch` / `save` 已改为调用 service，原本分散在 Controller 内的配置写入、cache clear、Webman reload 逻辑收敛到 service。
+- `ServerService@getAvailableAppServers` 已改为调用 `AppDomainService::applyToServer`，后续新增规则表时不需要继续污染节点筛选逻辑。
+- `Helper::getAppSubscribeUrl` 保留兼容入口，但内部委托给 `AppDomainService::buildSubscribeUrl`。
+
 任务：
 
 - 提取 host/path normalize。
@@ -593,4 +601,3 @@ v1.3.0-native-admin-ui
 - 所有 DB 变更都提供 dry-run。
 - 所有安装都输出备份路径。
 - 所有发布都先在测试平台跑完整 HTTP 验证。
-

@@ -248,16 +248,10 @@ class ServerService
             return (int) ($server['app_show'] ?? 1) === 1;
         });
 
-        $replaceEnabled = (int) config('v2board.app_domain_enable', 0) === 1;
-        $replaceHost = trim((string) config('v2board.app_domain_replace_host', ''));
-        if ($replaceEnabled && $replaceHost !== '') {
-            $servers = array_map(function ($server) use ($replaceHost) {
-                if ((int) ($server['app_domain_replace'] ?? 1) === 1) {
-                    $server['host'] = $replaceHost;
-                }
-                return $server;
-            }, $servers);
-        }
+        $appDomainService = new AppDomainService();
+        $servers = array_map(function ($server) use ($user, $appDomainService) {
+            return $appDomainService->applyToServer($user, $server);
+        }, $servers);
 
         return array_values($servers);
     }
