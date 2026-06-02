@@ -85,14 +85,17 @@ class HysteriaController extends Controller
     {
         $request->validate([
             'show' => 'in:0,1',
-            'app_show' => 'in:0,1'
+            'app_show' => 'in:0,1',
+            'app_domain_replace' => 'in:0,1'
         ], [
             'show.in' => '显示状态格式不正确',
-            'app_show.in' => 'App可见状态格式不正确'
+            'app_show.in' => 'App可见状态格式不正确',
+            'app_domain_replace.in' => 'App域名替换状态格式不正确'
         ]);
         $params = $request->only([
             'show',
             'app_show',
+            'app_domain_replace',
         ]);
 
         $server = ServerHysteria::find($request->input('id'));

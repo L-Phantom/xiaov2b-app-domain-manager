@@ -55,6 +55,7 @@ class ShadowsocksController extends Controller
         $params = $request->only([
             'show',
             'app_show',
+            'app_domain_replace',
         ]);
 
         $server = ServerShadowsocks::find($request->input('id'));

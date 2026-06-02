@@ -56,6 +56,7 @@ class VmessController extends Controller
         $params = $request->only([
             'show',
             'app_show',
+            'app_domain_replace',
         ]);
 
         $server = ServerVmess::find($request->input('id'));

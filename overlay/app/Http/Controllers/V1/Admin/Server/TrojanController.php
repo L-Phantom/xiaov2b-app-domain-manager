@@ -56,6 +56,7 @@ class TrojanController extends Controller
         $params = $request->only([
             'show',
             'app_show',
+            'app_domain_replace',
         ]);
 
         $server = ServerTrojan::find($request->input('id'));

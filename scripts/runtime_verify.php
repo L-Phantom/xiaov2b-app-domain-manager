@@ -51,6 +51,7 @@ if ($user) {
                 'name' => $server['name'] ?? '',
                 'host' => $server['host'] ?? '',
                 'app_show' => $server['app_show'] ?? null,
+                'app_domain_replace' => $server['app_domain_replace'] ?? null,
                 'type' => $server['type'] ?? ($server['protocol'] ?? ''),
             ];
         }, $allServers), 0, 5),
@@ -59,6 +60,7 @@ if ($user) {
                 'name' => $server['name'] ?? '',
                 'host' => $server['host'] ?? '',
                 'app_show' => $server['app_show'] ?? null,
+                'app_domain_replace' => $server['app_domain_replace'] ?? null,
                 'type' => $server['type'] ?? ($server['protocol'] ?? ''),
             ];
         }, $appServers), 0, 5),

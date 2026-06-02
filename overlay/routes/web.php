@@ -39,6 +39,23 @@ Route::get('/', function (Request $request) {
 
 //TODO:: 兼容
 Route::get('/' . config('v2board.secure_path', config('v2board.frontend_admin_path', hash('crc32b', config('app.key')))), function () {
+    $assetFiles = [
+        public_path('assets/admin/components.chunk.css'),
+        public_path('assets/admin/umi.css'),
+        public_path('assets/admin/custom.css'),
+        public_path('assets/admin/vendors.async.js'),
+        public_path('assets/admin/components.async.js'),
+        public_path('assets/admin/umi.js'),
+        public_path('assets/admin/app-domain-manager.js'),
+    ];
+    $assetVersion = config('app.version');
+    $assetTimes = array_filter(array_map(function ($file) {
+        return is_file($file) ? filemtime($file) : null;
+    }, $assetFiles));
+    if (!empty($assetTimes)) {
+        $assetVersion .= '-' . max($assetTimes);
+    }
+
     return view('admin', [
         'title' => config('v2board.app_name', 'V2Board'),
         'theme_sidebar' => config('v2board.frontend_theme_sidebar', 'light'),
@@ -46,6 +63,7 @@ Route::get('/' . config('v2board.secure_path', config('v2board.frontend_admin_pa
         'theme_color' => config('v2board.frontend_theme_color', 'default'),
         'background_url' => config('v2board.frontend_background_url'),
         'version' => config('app.version'),
+        'asset_version' => $assetVersion,
         'logo' => config('v2board.logo'),
         'secure_path' => config('v2board.secure_path', config('v2board.frontend_admin_path', hash('crc32b', config('app.key'))))
     ]);

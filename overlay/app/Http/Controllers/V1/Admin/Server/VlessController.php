@@ -140,6 +140,7 @@ class VlessController extends Controller
         $params = $request->validate([
             'show' => 'nullable|in:0,1',
             'app_show' => 'nullable|in:0,1',
+            'app_domain_replace' => 'nullable|in:0,1',
         ]);
 
         $server = ServerVless::find($request->input('id'));

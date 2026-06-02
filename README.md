@@ -7,12 +7,25 @@
 - 增加 `App 专用订阅`、`App bootstrap`、`App API 多域名`
 - 增加 `App 专用完整 Meta 订阅`，供客户端第二阶段静默升级使用
 - 在节点管理里增加 `App可见` 开关
+- 在节点管理里增加 App 域名替换开关，让单个节点可选择是否参与入口域名替换
 - 让普通网页订阅与 App 专用订阅分流
 - 面板升级后可再次一键部署
 
 当前补丁基线：
 - upstream: `wyx2685/v2board`
 - base commit: `e384825b`
+
+## 当前生产语境
+
+- 配套客户端已经迭代到正式交付线 `1.0.3`，不是候选交付状态。
+- 客户端关键版本提交：
+  - `0e87b0b`：v1.0.3，强制更新、图标修复、注册/忘记密码修复、版本号升级。
+  - `cecd95b`：Windows VC runtime DLL、Dio timeout、关键诊断日志、`apply_branding.dart` 图标拉取修复。
+- 当前打包方式：
+  - macOS 本地打包
+  - Android 本地打包
+  - Windows GitHub Actions 打包
+- 后续这个仓库按生产维护 / 测试平台灰度思路推进，优先保证可回滚、可验证、可重复部署。
 
 ## 目录说明
 
@@ -32,6 +45,27 @@
   做一轮不落库的场景验证，确认普通订阅与 App 订阅分流逻辑
 - `overlay/resources/rules/app.meta.clash.yaml`
   App 第二阶段完整 Meta 模板
+- `platform/`
+  Brand Manager / 打包后台，用于品牌配置、manifest、安装包上传、发布记录、强制更新与 `branding.dart` 预览。
+  当前本地 `platform/` 仍是未跟踪目录，生产数据不在本地工作区。
+
+## 打包后台说明
+
+`platform/` 是配套的打包后台 / Brand Manager，核心能力包括：
+
+- 品牌配置：品牌名、Panel URL、API 域名池、Manifest Secret、Subscribe Sign Secret
+- 分发配置：OSS Manifest URLs、落地页、客服 ID
+- 资源上传：品牌图标、Android APK、macOS DMG/ZIP、Windows EXE/MSIX/ZIP
+- 版本发布：版本号、更新日志、强制更新、发布历史
+- 客户端构建辅助：生成 encrypted manifest 与 `branding.dart` 预览
+
+生产化前建议先决定是否把 `platform/` 正式纳入仓库，并补齐：
+
+- 部署文档
+- 默认密码 / 凭据初始化策略
+- 包文件 SHA256 / 大小 / 上传时间记录
+- 发布回滚说明
+- 固定 Public Base URL / HTTPS / 缓存头
 
 ## 安装
 
@@ -135,22 +169,42 @@ php82 scripts/scenario_verify.php /path/to/v2board-root app-edge.example.com
 
 这份仓库推荐按“overlay 复装包”维护，而不是长期手改线上文件。
 
+原生化重构路线见：
+- `NATIVE_REFACTOR_PLAN.md`
+
 推荐流程：
 
-1. 先升级原版 `wyx2685/v2board`
-2. 在新版本站点上重新执行 `bash install.sh /path/to/site`
-3. 再执行 `bash verify.sh /path/to/site ...`
-4. 如果验证失败，只重新对齐这几个高风险文件：
+1. 先在测试平台手动升级原版 `wyx2685/v2board` / xiaov2b。
+2. 升级完成后，先检查站点文件、PHP CLI、后台安全路径、测试用户 token、数据库字段。
+3. 在新版本站点上重新执行 `bash install.sh /path/to/site`
+4. 再执行 `bash verify.sh /path/to/site ...`
+5. 如果验证失败，只重新对齐这几个高风险文件：
    - `ClientController.php`
    - `ClashMeta.php`
    - `app.meta.clash.yaml`
    - 以及你原来 `AppDomain / bootstrap / custom_app subscribe` 那几处 overlay
+   - 以及 2026-05-12 后新增的节点级 `app_show / app_domain_replace` 控制器、Request 与 admin asset 文件
 
 这样做的原因是：
 
 - 面板升级后，大部分文件并不会和这份补丁冲突
 - 真正的冲突面集中在少数订阅入口和协议模板文件
-- 把 App 专用完整 Meta 通道单独收口后，后续维护成本会明显比“大面积魔改 default.clash.yaml”更低
+- 把 App 专用完整 Meta 通道和节点级 App 开关单独收口后，后续维护成本会明显比“大面积魔改 default.clash.yaml”更低
+
+## 下一轮测试平台计划
+
+当前计划：
+
+1. 用户先手动完成测试平台升级。
+2. 升级后由 Codex 介入，检查升级后的真实文件与 schema。
+3. 再安装本 overlay 补丁包。
+4. 验证 App bootstrap、App config、App version、App-only subscribe、App meta subscribe、admin fetch/save。
+5. 重点验证：
+   - `app_show=0` 不进入 App 专用订阅
+   - `app_domain_replace=0` 在全局替换开启时仍保留原 host
+   - 普通网页订阅不被 App 专用模板污染
+   - 配置保存后 config cache / webman reload 生效
+6. 通过后再整理生产发布步骤与回滚命令。
 
 ## 当前边界
 

@@ -16,7 +16,8 @@ class ServerShadowsocksUpdate extends FormRequest
     {
         return [
             'show' => 'in:0,1',
-            'app_show' => 'in:0,1'
+            'app_show' => 'in:0,1',
+            'app_domain_replace' => 'in:0,1'
         ];
     }
 
@@ -24,7 +25,8 @@ class ServerShadowsocksUpdate extends FormRequest
     {
         return [
             'show.in' => '显示状态格式不正确',
-            'app_show.in' => 'App可见状态格式不正确'
+            'app_show.in' => 'App可见状态格式不正确',
+            'app_domain_replace.in' => 'App域名替换状态格式不正确'
         ];
     }
 }

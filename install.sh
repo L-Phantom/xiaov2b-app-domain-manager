@@ -93,7 +93,16 @@ PHP
   )"
 
   if [[ "$WEBMAN_PID" =~ ^[0-9]+$ ]]; then
-    kill -USR1 "$WEBMAN_PID" || true
+    (
+      cd "$TARGET_DIR"
+      if [ -f webman.php ]; then
+        "$PHP_BIN" webman.php stop || true
+        sleep 2
+        "$PHP_BIN" webman.php start -d || kill -USR1 "$WEBMAN_PID" || true
+      else
+        kill -USR1 "$WEBMAN_PID" || true
+      fi
+    )
   fi
 fi
 
