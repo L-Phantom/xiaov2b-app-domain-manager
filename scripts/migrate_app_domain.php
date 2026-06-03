@@ -33,11 +33,37 @@ if (!$schema->hasTable('v2_app_domain_rules')) {
     }
 }
 
+if (($schema->hasTable('v2_app_domain_rules') || $mode === '--apply') && !$schema->hasColumn('v2_app_domain_rules', 'port')) {
+    $actions[] = 'add column v2_app_domain_rules.port';
+    if ($mode === '--apply') {
+        $db->statement('ALTER TABLE `v2_app_domain_rules` ADD COLUMN `port` int unsigned DEFAULT NULL AFTER `domain`');
+    }
+}
+
+if (!$schema->hasTable('v2_app_domain_groups')) {
+    $actions[] = 'create table v2_app_domain_groups';
+    if ($mode === '--apply') {
+        $sql = file_get_contents(dirname(__DIR__) . '/sql/app_domain_groups.sql');
+        $db->statement($sql);
+    }
+}
+
+if (!$schema->hasTable('v2_app_domain_bindings')) {
+    $actions[] = 'create table v2_app_domain_bindings';
+    if ($mode === '--apply') {
+        $sql = file_get_contents(dirname(__DIR__) . '/sql/app_domain_bindings.sql');
+        $db->statement($sql);
+    }
+}
+
 $result = [
     'mode' => $mode,
     'target' => $target,
     'actions' => $actions,
     'app_domain_rules_table_exists' => $schema->hasTable('v2_app_domain_rules') || ($mode === '--apply' && in_array('create table v2_app_domain_rules', $actions, true)),
+    'app_domain_rules_has_port' => $schema->hasTable('v2_app_domain_rules') ? $schema->hasColumn('v2_app_domain_rules', 'port') || ($mode === '--apply' && in_array('add column v2_app_domain_rules.port', $actions, true)) : false,
+    'app_domain_groups_table_exists' => $schema->hasTable('v2_app_domain_groups') || ($mode === '--apply' && in_array('create table v2_app_domain_groups', $actions, true)),
+    'app_domain_bindings_table_exists' => $schema->hasTable('v2_app_domain_bindings') || ($mode === '--apply' && in_array('create table v2_app_domain_bindings', $actions, true)),
 ];
 
 echo json_encode($result, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) . PHP_EOL;

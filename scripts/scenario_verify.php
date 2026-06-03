@@ -91,15 +91,21 @@ $appDomainService = new \App\Services\AppDomainService();
     }
 
     $ruleHost = 'rule-' . $replaceHost;
+    $rulePort = 24443;
+    $bindingHost = 'binding-' . $replaceHost;
+    $bindingPort = 25443;
     $ruleMatchedServer = null;
+    $bindingMatchedServer = null;
     $ruleUnmatchedServer = null;
     $ruleTableExists = \Illuminate\Support\Facades\Schema::hasTable('v2_app_domain_rules');
+    $bindingTableExists = \Illuminate\Support\Facades\Schema::hasTable('v2_app_domain_groups') && \Illuminate\Support\Facades\Schema::hasTable('v2_app_domain_bindings');
     if ($ruleTableExists && class_exists(\App\Models\AppDomainRule::class)) {
         $appDomainService->saveRule([
             'name' => 'scenario verify',
             'enable' => 1,
             'sort' => 1,
             'domain' => $ruleHost,
+            'port' => $rulePort,
             'user_group_ids' => [],
             'plan_ids' => [],
             'server_types' => [$serverType],
@@ -153,12 +159,43 @@ $appDomainService = new \App\Services\AppDomainService();
             $appDomainService->dropRule((int) $crudRule->id);
         }
     }
+    if ($bindingTableExists && class_exists(\App\Models\AppDomainGroup::class) && class_exists(\App\Models\AppDomainBinding::class)) {
+        $appDomainService->saveGroup([
+            'name' => 'scenario binding group',
+            'enable' => 1,
+            'sort' => 1,
+            'domain' => $bindingHost,
+            'user_group_ids' => [],
+            'plan_ids' => [],
+            'remark' => 'scenario binding group',
+        ]);
+        $group = \App\Models\AppDomainGroup::where('name', 'scenario binding group')->first();
+        $appDomainService->saveBinding([
+            'group_id' => (int) $group->id,
+            'enable' => 1,
+            'sort' => 1,
+            'server_type' => $serverType,
+            'server_id' => (int) $server->id,
+            'port' => $bindingPort,
+            'remark' => 'scenario binding',
+        ]);
+        $bindingServers = $service->getAvailableAppServers($user);
+        foreach ($bindingServers as $item) {
+            if ((int) ($item['id'] ?? 0) === (int) $server->id && ($item['type'] ?? '') === $serverType) {
+                $bindingMatchedServer = $item;
+                break;
+            }
+        }
+    }
 
     $checks = [
         'all_servers_keep_original_host' => ($allMatchedServer['host'] ?? null) === ($server->host ?? null),
         'app_replace_enabled_uses_replace_host' => ($appMatchedServer['host'] ?? null) === $replaceHost,
         'app_replace_disabled_keeps_original_host' => ($appMatchedServerWithoutReplace['host'] ?? null) === ($server->host ?? null),
         'rule_match_uses_rule_host' => $ruleTableExists ? (($ruleMatchedServer['host'] ?? null) === $ruleHost) : true,
+        'rule_match_uses_rule_port' => $ruleTableExists ? ((int) ($ruleMatchedServer['port'] ?? 0) === $rulePort) : true,
+        'binding_match_overrides_rule_host' => $bindingTableExists ? (($bindingMatchedServer['host'] ?? null) === $bindingHost) : true,
+        'binding_match_overrides_rule_port' => $bindingTableExists ? ((int) ($bindingMatchedServer['port'] ?? 0) === $bindingPort) : true,
         'rule_unmatched_keeps_original_host' => $ruleTableExists ? (($ruleUnmatchedServer['host'] ?? null) === 'scenario-origin.example.com') : true,
         'subscribe_rule_uses_user_matched_host' => $ruleTableExists ? (strpos($subscribeUrl ?? '', 'https://subscribe-' . $replaceHost) === 0) : true,
         'rule_crud_sort_drop_ok' => $ruleTableExists ? (\App\Models\AppDomainRule::where('name', 'scenario subscribe verify')->count() === 0) : true,
@@ -179,6 +216,7 @@ $appDomainService = new \App\Services\AppDomainService();
             'rule_match_should_use_rule_host_when_table_exists' => $ruleTableExists ? $ruleHost : 'skipped',
         ],
         'rule_table_exists' => $ruleTableExists,
+        'binding_table_exists' => $bindingTableExists,
         'checks' => $checks,
         'all_sample' => array_slice(array_map(function ($item) {
             return [

@@ -3,6 +3,8 @@
 namespace App\Http\Controllers\V1\Admin\Server;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Admin\AppDomainBindingSave;
+use App\Http\Requests\Admin\AppDomainGroupSave;
 use App\Http\Requests\Admin\AppDomainRuleSave;
 use App\Http\Requests\Admin\AppDomainRuleSort;
 use App\Services\AppDomainService;
@@ -52,6 +54,51 @@ class AppDomainController extends Controller
     {
         return response([
             'data' => (new AppDomainService())->getRules()
+        ]);
+    }
+
+    public function groups()
+    {
+        return response([
+            'data' => (new AppDomainService())->getGroups()
+        ]);
+    }
+
+    public function saveGroup(AppDomainGroupSave $request)
+    {
+        return response([
+            'data' => (new AppDomainService())->saveGroup($request->validated())
+        ]);
+    }
+
+    public function dropGroup(Request $request)
+    {
+        $id = (int) $request->input('id');
+        if (!$id) {
+            abort(500, '入口组ID不能为空');
+        }
+
+        return response([
+            'data' => (new AppDomainService())->dropGroup($id)
+        ]);
+    }
+
+    public function saveBinding(AppDomainBindingSave $request)
+    {
+        return response([
+            'data' => (new AppDomainService())->saveBinding($request->validated())
+        ]);
+    }
+
+    public function dropBinding(Request $request)
+    {
+        $id = (int) $request->input('id');
+        if (!$id) {
+            abort(500, '入口绑定ID不能为空');
+        }
+
+        return response([
+            'data' => (new AppDomainService())->dropBinding($id)
         ]);
     }
 

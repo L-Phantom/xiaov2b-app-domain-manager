@@ -28,6 +28,9 @@ $kernel->bootstrap();
 
 $schema = Illuminate\Support\Facades\Schema::getFacadeRoot();
 $result['checks']['app_domain_rules_table_exists'] = $schema->hasTable('v2_app_domain_rules');
+$result['checks']['app_domain_rules_has_port'] = $schema->hasTable('v2_app_domain_rules') && $schema->hasColumn('v2_app_domain_rules', 'port');
+$result['checks']['app_domain_groups_table_exists'] = $schema->hasTable('v2_app_domain_groups');
+$result['checks']['app_domain_bindings_table_exists'] = $schema->hasTable('v2_app_domain_bindings');
 $result['checks']['php_has_openssl_encrypt'] = function_exists('openssl_encrypt');
 $result['checks']['php_has_posix_kill'] = function_exists('posix_kill');
 

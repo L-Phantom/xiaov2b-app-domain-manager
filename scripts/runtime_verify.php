@@ -19,6 +19,8 @@ $kernel->bootstrap();
 $result = [
     'services' => [
         'app_domain_service_exists' => class_exists(\App\Services\AppDomainService::class),
+        'app_domain_group_model_exists' => class_exists(\App\Models\AppDomainGroup::class),
+        'app_domain_binding_model_exists' => class_exists(\App\Models\AppDomainBinding::class),
         'app_domain_rule_model_exists' => class_exists(\App\Models\AppDomainRule::class),
     ],
     'config' => [
@@ -32,7 +34,12 @@ $result = [
     'rules' => [
         'app_domain_rule_enable' => (int) config('v2board.app_domain_rule_enable', 0),
         'table_exists' => \Illuminate\Support\Facades\Schema::hasTable('v2_app_domain_rules'),
+        'has_port_column' => \Illuminate\Support\Facades\Schema::hasTable('v2_app_domain_rules') && \Illuminate\Support\Facades\Schema::hasColumn('v2_app_domain_rules', 'port'),
         'count' => \Illuminate\Support\Facades\Schema::hasTable('v2_app_domain_rules') ? \App\Models\AppDomainRule::count() : null,
+        'groups_table_exists' => \Illuminate\Support\Facades\Schema::hasTable('v2_app_domain_groups'),
+        'bindings_table_exists' => \Illuminate\Support\Facades\Schema::hasTable('v2_app_domain_bindings'),
+        'group_count' => \Illuminate\Support\Facades\Schema::hasTable('v2_app_domain_groups') ? \App\Models\AppDomainGroup::count() : null,
+        'binding_count' => \Illuminate\Support\Facades\Schema::hasTable('v2_app_domain_bindings') ? \App\Models\AppDomainBinding::count() : null,
     ],
     'templates' => [
         'default_clash_meta_exists' => file_exists($target . '/resources/rules/default.clash.yaml'),
@@ -71,6 +78,7 @@ if ($user) {
             return [
                 'name' => $server['name'] ?? '',
                 'host' => $server['host'] ?? '',
+                'port' => $server['port'] ?? null,
                 'app_show' => $server['app_show'] ?? null,
                 'app_domain_replace' => $server['app_domain_replace'] ?? null,
                 'type' => $server['type'] ?? ($server['protocol'] ?? ''),
@@ -80,6 +88,7 @@ if ($user) {
             return [
                 'name' => $server['name'] ?? '',
                 'host' => $server['host'] ?? '',
+                'port' => $server['port'] ?? null,
                 'app_show' => $server['app_show'] ?? null,
                 'app_domain_replace' => $server['app_domain_replace'] ?? null,
                 'type' => $server['type'] ?? ($server['protocol'] ?? ''),

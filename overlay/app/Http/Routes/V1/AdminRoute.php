@@ -37,6 +37,11 @@ class AdminRoute
             $router->post('/server/app-domain/save', 'V1\\Admin\\Server\\AppDomainController@save');
             $router->get ('/server/app-domain/config', 'V1\\Admin\\Server\\AppDomainController@config');
             $router->post('/server/app-domain/config', 'V1\\Admin\\Server\\AppDomainController@save');
+            $router->get ('/server/app-domain/groups', 'V1\\Admin\\Server\\AppDomainController@groups');
+            $router->post('/server/app-domain/group/save', 'V1\\Admin\\Server\\AppDomainController@saveGroup');
+            $router->post('/server/app-domain/group/drop', 'V1\\Admin\\Server\\AppDomainController@dropGroup');
+            $router->post('/server/app-domain/binding/save', 'V1\\Admin\\Server\\AppDomainController@saveBinding');
+            $router->post('/server/app-domain/binding/drop', 'V1\\Admin\\Server\\AppDomainController@dropBinding');
             $router->get ('/server/app-domain/rules', 'V1\\Admin\\Server\\AppDomainController@rules');
             $router->post('/server/app-domain/rule/save', 'V1\\Admin\\Server\\AppDomainController@saveRule');
             $router->post('/server/app-domain/rule/drop', 'V1\\Admin\\Server\\AppDomainController@dropRule');

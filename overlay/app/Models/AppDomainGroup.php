@@ -4,9 +4,9 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 
-class AppDomainRule extends Model
+class AppDomainGroup extends Model
 {
-    protected $table = 'v2_app_domain_rules';
+    protected $table = 'v2_app_domain_groups';
     protected $dateFormat = 'U';
     protected $guarded = ['id'];
     protected $casts = [
@@ -14,9 +14,10 @@ class AppDomainRule extends Model
         'updated_at' => 'timestamp',
         'user_group_ids' => 'array',
         'plan_ids' => 'array',
-        'server_types' => 'array',
-        'server_ids' => 'array',
-        'protocols' => 'array',
-        'port' => 'integer',
     ];
+
+    public function bindings()
+    {
+        return $this->hasMany(AppDomainBinding::class, 'group_id', 'id');
+    }
 }

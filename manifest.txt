@@ -12,9 +12,13 @@ app/Http/Controllers/V1/Client/ClientController.php
 app/Http/Controllers/V2/App/AppController.php
 app/Http/Kernel.php
 app/Http/Middleware/AppUser.php
+app/Models/AppDomainBinding.php
+app/Models/AppDomainGroup.php
 app/Models/AppDomainRule.php
 app/Protocols/ClashMeta.php
 app/Http/Requests/Admin/AppDomainRuleSave.php
+app/Http/Requests/Admin/AppDomainGroupSave.php
+app/Http/Requests/Admin/AppDomainBindingSave.php
 app/Http/Requests/Admin/AppDomainRuleSort.php
 app/Http/Requests/Admin/ServerShadowsocksUpdate.php
 app/Http/Requests/Admin/ServerTrojanUpdate.php

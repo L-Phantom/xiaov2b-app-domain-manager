@@ -6,9 +6,8 @@
     options: {},
     filter: "",
     groupFilter: "",
-    loading: false,
-    saving: false,
-    modalRule: null
+    modalRule: null,
+    loading: false
   };
   var styleMounted = false;
   var loadingPromise = null;
@@ -70,8 +69,21 @@
       app_api_domain_enable: Number(data.app_api_domain_enable || 0),
       app_api_domain_hosts: Array.isArray(data.app_api_domain_hosts) ? data.app_api_domain_hosts : [],
       app_api_domain_encrypt_enable: Number(data.app_api_domain_encrypt_enable || 0),
-      app_api_domain_encrypt_key: data.app_api_domain_encrypt_key || "",
-      preview: data.preview || {}
+      app_api_domain_encrypt_key: data.app_api_domain_encrypt_key || ""
+    };
+  }
+
+  function normalizeBinding(binding) {
+    binding = binding || {};
+    return {
+      id: binding.id || "",
+      group_id: binding.group_id || "",
+      enable: Number(binding.enable == null ? 1 : binding.enable),
+      sort: Number(binding.sort || 0),
+      server_type: binding.server_type || "",
+      server_id: binding.server_id || "",
+      port: binding.port || "",
+      remark: binding.remark || ""
     };
   }
 
@@ -85,21 +97,15 @@
       domain: rule.domain || "",
       user_group_ids: Array.isArray(rule.user_group_ids) ? rule.user_group_ids : [],
       plan_ids: Array.isArray(rule.plan_ids) ? rule.plan_ids : [],
-      server_types: Array.isArray(rule.server_types) ? rule.server_types : [],
-      server_ids: Array.isArray(rule.server_ids) ? rule.server_ids : [],
-      protocols: Array.isArray(rule.protocols) ? rule.protocols : [],
-      replace_node_host: Number(rule.replace_node_host == null ? 1 : rule.replace_node_host),
-      replace_subscribe_host: Number(rule.replace_subscribe_host || 0),
-      remark: rule.remark || ""
+      remark: rule.remark || "",
+      bindings: Array.isArray(rule.bindings) ? rule.bindings.map(normalizeBinding) : []
     };
   }
 
   function emptyRule() {
     return normalizeRule({
       enable: 1,
-      sort: (state.rules || []).length + 1,
-      replace_node_host: 1,
-      replace_subscribe_host: 0
+      sort: (state.rules || []).length + 1
     });
   }
 
@@ -112,7 +118,7 @@
       ".adm-toolbar{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:16px;flex-wrap:wrap;}",
       ".adm-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap;}",
       ".adm-grid{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:16px;}",
-      ".adm-span-4{grid-column:span 4;}.adm-span-6{grid-column:span 6;}.adm-span-8{grid-column:span 8;}.adm-span-12{grid-column:span 12;}",
+      ".adm-span-2{grid-column:span 2}.adm-span-3{grid-column:span 3}.adm-span-4{grid-column:span 4}.adm-span-6{grid-column:span 6}.adm-span-8{grid-column:span 8}.adm-span-9{grid-column:span 9}.adm-span-12{grid-column:span 12}",
       ".adm-block{background:#fff;border:1px solid #eef0f4;border-radius:8px;margin-bottom:16px;}",
       ".adm-block-header{padding:14px 18px;border-bottom:1px solid #eef0f4;display:flex;align-items:center;justify-content:space-between;gap:12px;}",
       ".adm-block-title{font-size:15px;font-weight:600;color:#2f3542;margin:0;}",
@@ -120,14 +126,11 @@
       ".adm-form-label{display:block;font-size:13px;color:#4a5568;margin-bottom:6px;font-weight:500;}",
       ".adm-form-control{width:100%;height:34px;border:1px solid #d8dde8;border-radius:4px;padding:6px 10px;font-size:13px;background:#fff;color:#2f3542;outline:none;}",
       ".adm-form-control:focus{border-color:#5c80ff;box-shadow:0 0 0 2px rgba(92,128,255,.12);}",
-      ".adm-textarea{min-height:94px;resize:vertical;line-height:1.6;}",
       ".adm-field{margin-bottom:14px;}",
       ".adm-switch-line{height:34px;display:flex;align-items:center;gap:8px;white-space:nowrap;}",
-      ".adm-switch-line .adm-status{min-height:0;white-space:nowrap;line-height:20px;}",
       ".adm-modal-switches{display:flex;align-items:center;gap:20px;flex-wrap:wrap;padding:2px 0 8px;}",
-      ".adm-modal-switch{display:inline-flex;align-items:center;gap:8px;min-width:150px;white-space:nowrap;}",
+      ".adm-modal-switch{display:inline-flex;align-items:center;gap:8px;min-width:120px;white-space:nowrap;}",
       ".adm-modal-switch-label{font-size:13px;color:#4a5568;font-weight:500;white-space:nowrap;}",
-      ".adm-modal-switch .adm-status{min-height:0;line-height:20px;white-space:nowrap;}",
       ".adm-switch{position:relative;width:38px;height:20px;display:inline-block;}",
       ".adm-switch input{display:none;}",
       ".adm-switch span{position:absolute;inset:0;background:#c6ccd8;border-radius:20px;transition:.18s;}",
@@ -135,7 +138,7 @@
       ".adm-switch input:checked+span{background:#5c80ff;}",
       ".adm-switch input:checked+span:before{transform:translateX(18px);}",
       ".adm-status{font-size:13px;color:#6b7280;min-height:20px;}",
-      ".adm-status.success{color:#1c7c4c;}.adm-status.error{color:#b42318;}",
+      ".adm-status.success{color:#1c7c4c}.adm-status.error{color:#b42318}",
       ".adm-preview{font-size:13px;line-height:1.7;color:#4b5563;background:#f7f8fb;border:1px solid #edf0f5;border-radius:6px;padding:10px 12px;word-break:break-all;min-height:38px;}",
       ".adm-table-wrap{overflow:auto;border:1px solid #eef0f4;border-radius:6px;}",
       ".adm-table{width:100%;border-collapse:collapse;background:#fff;min-width:980px;}",
@@ -143,33 +146,34 @@
       ".adm-table td{font-size:13px;color:#2f3542;padding:12px;border-bottom:1px solid #f0f2f5;vertical-align:top;}",
       ".adm-table tr:last-child td{border-bottom:0;}",
       ".adm-badge{display:inline-flex;align-items:center;height:22px;padding:0 8px;border-radius:4px;font-size:12px;background:#eef2ff;color:#3150b7;white-space:nowrap;}",
-      ".adm-badge.gray{background:#f1f3f5;color:#596273;}.adm-badge.green{background:#e9f8ef;color:#137447;}.adm-badge.red{background:#fff1f0;color:#b42318;}",
-      ".adm-tags{display:flex;gap:6px;flex-wrap:wrap;max-width:280px;}",
+      ".adm-badge.gray{background:#f1f3f5;color:#596273}.adm-badge.green{background:#e9f8ef;color:#137447}.adm-badge.red{background:#fff1f0;color:#b42318}",
+      ".adm-tags{display:flex;gap:6px;flex-wrap:wrap;max-width:360px;}",
       ".adm-btn{height:32px;border:1px solid #d8dde8;border-radius:4px;background:#fff;color:#354052;padding:0 10px;font-size:13px;cursor:pointer;display:inline-flex;align-items:center;gap:6px;justify-content:center;}",
-      ".adm-btn:hover{border-color:#5c80ff;color:#3150b7;}",
-      ".adm-btn-primary{background:#5c80ff;border-color:#5c80ff;color:#fff;}",
-      ".adm-btn-primary:hover{background:#466ce6;color:#fff;}",
-      ".adm-btn-danger{border-color:#ffd2d0;color:#b42318;}",
-      ".adm-btn-text{border-color:transparent;background:transparent;padding:0 6px;}",
-      ".adm-btn[disabled]{opacity:.55;cursor:not-allowed;}",
+      ".adm-btn:hover{border-color:#5c80ff;color:#3150b7}",
+      ".adm-btn-primary{background:#5c80ff;border-color:#5c80ff;color:#fff}",
+      ".adm-btn-primary:hover{background:#466ce6;color:#fff}",
+      ".adm-btn-danger{border-color:#ffd2d0;color:#b42318}",
+      ".adm-btn-text{border-color:transparent;background:transparent;padding:0 6px}",
+      ".adm-btn[disabled]{opacity:.55;cursor:not-allowed}",
       ".adm-empty{padding:38px 12px;text-align:center;color:#8a93a3;font-size:13px;}",
       ".adm-modal-mask{position:fixed;inset:0;background:rgba(17,24,39,.42);z-index:9998;display:flex;align-items:center;justify-content:center;padding:24px;}",
-      ".adm-modal{width:min(900px,100%);max-height:calc(100vh - 48px);overflow:auto;background:#fff;border-radius:8px;box-shadow:0 24px 60px rgba(15,23,42,.22);}",
+      ".adm-modal{width:min(980px,100%);max-height:calc(100vh - 48px);overflow:auto;background:#fff;border-radius:8px;box-shadow:0 24px 60px rgba(15,23,42,.22);}",
       ".adm-modal-head{height:56px;padding:0 20px;border-bottom:1px solid #eef0f4;display:flex;align-items:center;justify-content:space-between;}",
       ".adm-modal-title{font-size:15px;font-weight:600;color:#2f3542;}",
       ".adm-modal-body{padding:20px;}",
       ".adm-modal-foot{padding:14px 20px;border-top:1px solid #eef0f4;display:flex;justify-content:flex-end;gap:8px;}",
       ".adm-checks{display:flex;gap:8px;flex-wrap:wrap;}",
       ".adm-check{display:inline-flex;align-items:center;gap:6px;height:30px;padding:0 10px;border:1px solid #d8dde8;border-radius:4px;font-size:13px;color:#354052;}",
-      ".adm-check input{margin:0;}",
-      ".adm-node-tools{display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap;}",
-      ".adm-node-table-wrap{max-height:260px;overflow:auto;border:1px solid #eef0f4;border-radius:6px;background:#fff;}",
-      ".adm-node-table{width:100%;border-collapse:collapse;min-width:680px;}",
+      ".adm-check input{margin:0}",
+      ".adm-node-tools{display:flex;align-items:center;gap:8px;margin:8px 0 10px;flex-wrap:wrap;}",
+      ".adm-node-table-wrap{max-height:320px;overflow:auto;border:1px solid #eef0f4;border-radius:6px;background:#fff;}",
+      ".adm-node-table{width:100%;border-collapse:collapse;min-width:820px;}",
       ".adm-node-table th{height:36px;background:#f8f9fc;color:#566070;font-size:12px;font-weight:600;text-align:left;padding:0 10px;border-bottom:1px solid #eef0f4;white-space:nowrap;}",
       ".adm-node-table td{font-size:13px;color:#2f3542;padding:9px 10px;border-bottom:1px solid #f0f2f5;vertical-align:middle;}",
-      ".adm-node-table tr:last-child td{border-bottom:0;}",
+      ".adm-node-table tr:last-child td{border-bottom:0}",
       ".adm-node-table code{font-size:12px;color:#4b5563;}",
-      "@media(max-width:900px){.adm-page{padding:0 12px 18px}.adm-grid{display:block}.adm-span-4,.adm-span-6,.adm-span-8,.adm-span-12{grid-column:auto}.adm-block-body{padding:14px}.adm-toolbar{align-items:flex-start}.adm-actions{width:100%}.adm-form-control.adm-filter{width:100%!important}}"
+      ".adm-port-input{width:92px;height:30px}",
+      "@media(max-width:900px){.adm-page{padding:0 12px 18px}.adm-grid{display:block}.adm-span-2,.adm-span-3,.adm-span-4,.adm-span-6,.adm-span-8,.adm-span-9,.adm-span-12{grid-column:auto}.adm-block-body{padding:14px}.adm-toolbar{align-items:flex-start}.adm-actions{width:100%}.adm-form-control.adm-filter{width:100%!important}}"
     ].join("\n");
     document.head.appendChild(style);
   }
@@ -230,11 +234,6 @@
       '<input class="adm-form-control ' + (extraClass || "") + '" id="' + id + '" value="' + escapeHtml(value || "") + '" placeholder="' + escapeHtml(placeholder || "") + '"></div>';
   }
 
-  function textarea(label, id, value, placeholder) {
-    return '<div class="adm-field"><label class="adm-form-label" for="' + id + '">' + escapeHtml(label) + '</label>' +
-      '<textarea class="adm-form-control adm-textarea" id="' + id + '" placeholder="' + escapeHtml(placeholder || "") + '">' + escapeHtml(value || "") + '</textarea></div>';
-  }
-
   function switchField(label, id, checked) {
     return '<div class="adm-field"><label class="adm-form-label">' + escapeHtml(label) + '</label>' +
       '<div class="adm-switch-line">' + switchHtml(id, checked) + '<span class="adm-status">' + (checked ? "开启" : "关闭") + '</span></div></div>';
@@ -249,6 +248,28 @@
     return '<span class="adm-badge ' + (cls || "") + '">' + escapeHtml(text) + '</span>';
   }
 
+  function endpoint(host, port) {
+    return host ? host + (port ? ":" + port : "") : "-";
+  }
+
+  function nodeKey(type, id) {
+    return String(type || "") + ":" + String(id || "");
+  }
+
+  function findNode(type, id) {
+    return (state.options.nodes || []).find(function (node) {
+      return node.type === type && Number(node.id) === Number(id);
+    }) || null;
+  }
+
+  function bindingMap(rule) {
+    var map = {};
+    (rule.bindings || []).forEach(function (binding) {
+      map[nodeKey(binding.server_type, binding.server_id)] = binding;
+    });
+    return map;
+  }
+
   function selectedText(ids, list) {
     ids = Array.isArray(ids) ? ids : [];
     if (!ids.length) return "全部";
@@ -259,63 +280,34 @@
     return names.join(" / ");
   }
 
-  function scopeTags(rule) {
-    var options = state.options || {};
-    var html = [];
-    html.push(tag("组 " + selectedText(rule.user_group_ids, options.user_groups), "gray"));
-    html.push(tag("套餐 " + selectedText(rule.plan_ids, options.plans), "gray"));
-    html.push(tag("节点 " + selectedNodeText(rule.server_ids, rule.server_types), "gray"));
-    return '<div class="adm-tags">' + html.join("") + '</div>';
+  function nodeSummary(rule) {
+    var bindings = rule.bindings || [];
+    if (!bindings.length) return "未绑定";
+    return bindings.map(function (binding) {
+      var node = findNode(binding.server_type, binding.server_id);
+      var name = node ? node.name : binding.server_id;
+      return binding.server_type + " #" + binding.server_id + " " + name + (binding.port ? ":" + binding.port : "");
+    }).join(" / ");
   }
 
-  function behaviorTags(rule) {
-    var html = [];
-    if (rule.replace_node_host) html.push(tag("节点入口", "green"));
-    if (rule.replace_subscribe_host) html.push(tag("订阅入口", "green"));
-    if (!html.length) html.push(tag("仅匹配", "gray"));
-    return '<div class="adm-tags">' + html.join("") + '</div>';
+  function scopeTags(rule) {
+    var options = state.options || {};
+    return '<div class="adm-tags">' +
+      tag("组 " + selectedText(rule.user_group_ids, options.user_groups), "gray") +
+      tag("套餐 " + selectedText(rule.plan_ids, options.plans), "gray") +
+      tag("节点 " + nodeSummary(rule), "gray") +
+      '</div>';
   }
 
   function filteredRules() {
     var q = String(state.filter || "").trim().toLowerCase();
     var groupId = String(state.groupFilter || "");
     return (state.rules || []).filter(function (rule) {
-      if (q && [rule.name, rule.domain, rule.remark].join(" ").toLowerCase().indexOf(q) === -1) return false;
+      if (q && [rule.name, rule.domain, rule.remark, nodeSummary(rule)].join(" ").toLowerCase().indexOf(q) === -1) return false;
       if (groupId && rule.user_group_ids.length && rule.user_group_ids.map(String).indexOf(groupId) === -1) return false;
       if (groupId && !rule.user_group_ids.length) return true;
       return true;
     });
-  }
-
-  function renderRuleRows() {
-    var rules = filteredRules();
-    if (!rules.length) {
-      return '<tr><td colspan="8"><div class="adm-empty">暂无规则</div></td></tr>';
-    }
-    return rules.map(function (rule, index) {
-      return '<tr data-rule-id="' + escapeHtml(rule.id) + '">' +
-        '<td>' + escapeHtml(rule.sort || index + 1) + '</td>' +
-        '<td><strong>' + escapeHtml(rule.name) + '</strong>' + (rule.remark ? '<div class="adm-status">' + escapeHtml(rule.remark) + '</div>' : '') + '</td>' +
-        '<td>' + (rule.enable ? tag("启用", "green") : tag("停用", "red")) + '</td>' +
-        '<td><code>' + escapeHtml(rule.domain) + '</code></td>' +
-        '<td>' + scopeTags(rule) + '</td>' +
-        '<td>' + behaviorTags(rule) + '</td>' +
-        '<td>' +
-          '<button class="adm-btn adm-btn-text adm-rule-up" title="上移">' + icon("arrow-up") + '</button>' +
-          '<button class="adm-btn adm-btn-text adm-rule-down" title="下移">' + icon("arrow-down") + '</button>' +
-        '</td>' +
-        '<td>' +
-          '<button class="adm-btn adm-rule-edit">' + icon("pencil") + '编辑</button> ' +
-          '<button class="adm-btn adm-btn-danger adm-rule-drop">' + icon("trash") + '删除</button>' +
-        '</td>' +
-      '</tr>';
-    }).join("");
-  }
-
-  function renderGroupOptions() {
-    return '<option value="">全部用户组</option>' + ((state.options.user_groups || []).map(function (item) {
-      return '<option value="' + escapeHtml(item.id) + '"' + (String(state.groupFilter) === String(item.id) ? " selected" : "") + '>' + escapeHtml(item.name) + '</option>';
-    }).join(""));
   }
 
   function subscribePreview(config) {
@@ -341,9 +333,99 @@
       '  <div class="adm-span-4">' + field("App 订阅域名", "adm_public_host", config.app_domain_public_host, "", "app.example.com") + '</div>',
       '  <div class="adm-span-4">' + field("订阅路径", "adm_subscribe_path", config.app_domain_subscribe_path, "", "/api/v1/client/custom_app/subscribe") + '</div>',
       '  <div class="adm-span-4">' + field("加密密钥", "adm_encrypt_key", config.app_api_domain_encrypt_key, "", "") + '</div>',
-      '  <div class="adm-span-6">' + textarea("API 域名池", "adm_api_hosts", config.app_api_domain_hosts.join("\\n"), "api1.example.com\\napi2.example.com") + '</div>',
+      '  <div class="adm-span-6"><div class="adm-field"><label class="adm-form-label" for="adm_api_hosts">API 域名池</label><textarea class="adm-form-control" style="height:94px;resize:vertical;line-height:1.6" id="adm_api_hosts" placeholder="api1.example.com\\napi2.example.com">' + escapeHtml(config.app_api_domain_hosts.join("\\n")) + '</textarea></div></div>',
       '  <div class="adm-span-6"><label class="adm-form-label">订阅预览</label><div class="adm-preview" id="adm-preview-subscribe">' + escapeHtml(subscribePreview(config)) + '</div></div>',
       '  <div class="adm-span-6"><label class="adm-form-label">API 预览</label><div class="adm-preview" id="adm-preview-api">' + escapeHtml(apiPreview(config)) + '</div></div>',
+      '</div>'
+    ].join("\n");
+  }
+
+  function renderRuleRows() {
+    var rules = filteredRules();
+    if (!rules.length) {
+      return '<tr><td colspan="8"><div class="adm-empty">暂无规则</div></td></tr>';
+    }
+    return rules.map(function (rule, index) {
+      return '<tr data-rule-id="' + escapeHtml(rule.id) + '">' +
+        '<td>' + escapeHtml(rule.sort || index + 1) + '</td>' +
+        '<td><strong>' + escapeHtml(rule.name) + '</strong>' + (rule.remark ? '<div class="adm-status">' + escapeHtml(rule.remark) + '</div>' : '') + '</td>' +
+        '<td>' + (rule.enable ? tag("启用", "green") : tag("停用", "red")) + '</td>' +
+        '<td><code>' + escapeHtml(rule.domain) + '</code></td>' +
+        '<td>' + scopeTags(rule) + '</td>' +
+        '<td>' + tag((rule.bindings || []).length + " 个节点", "green") + '</td>' +
+        '<td><button class="adm-btn adm-rule-edit">' + icon("pencil") + '编辑</button> <button class="adm-btn adm-btn-danger adm-rule-drop">' + icon("trash") + '删除</button></td>' +
+      '</tr>';
+    }).join("");
+  }
+
+  function renderGroupOptions() {
+    return '<option value="">全部用户组</option>' + ((state.options.user_groups || []).map(function (item) {
+      return '<option value="' + escapeHtml(item.id) + '"' + (String(state.groupFilter) === String(item.id) ? " selected" : "") + '>' + escapeHtml(item.name) + '</option>';
+    }).join(""));
+  }
+
+  function renderCheckboxes(name, values, selected) {
+    selected = Array.isArray(selected) ? selected.map(String) : [];
+    return '<div class="adm-checks">' + values.map(function (item) {
+      var value = item.value == null ? item.id : item.value;
+      var label = item.label == null ? item.name : item.label;
+      return '<label class="adm-check"><input type="checkbox" name="' + name + '" value="' + escapeHtml(value) + '"' + (selected.indexOf(String(value)) !== -1 ? " checked" : "") + '> ' + escapeHtml(label) + '</label>';
+    }).join("") + '</div>';
+  }
+
+  function renderNodeBindings(rule) {
+    var nodes = state.options.nodes || [];
+    if (!nodes.length) {
+      return '<div class="adm-empty" style="padding:18px 0">暂无节点可选</div>';
+    }
+    var bindings = bindingMap(rule);
+    return '<div class="adm-node-tools">' +
+      '<input class="adm-form-control" style="width:220px" id="adm_node_filter" placeholder="搜索节点">' +
+      '<button class="adm-btn" id="adm_node_select_visible" type="button">' + icon("check") + '选择当前</button>' +
+      '<button class="adm-btn" id="adm_node_clear" type="button">' + icon("close") + '清空节点</button>' +
+    '</div>' +
+    '<div class="adm-node-table-wrap"><table class="adm-node-table">' +
+      '<thead><tr><th style="width:42px"><input type="checkbox" id="adm_node_check_all"></th><th style="width:90px">节点ID</th><th>节点</th><th style="width:110px">类型</th><th>原入口</th><th style="width:120px">入口端口</th><th>下发预览</th></tr></thead>' +
+      '<tbody>' + nodes.map(function (node) {
+        var key = nodeKey(node.type, node.id);
+        var binding = bindings[key] || {};
+        var checked = !!binding.id;
+        var origin = endpoint(node.host, node.port);
+        var port = binding.port || "";
+        var target = endpoint(rule.domain || "入口域名", port || node.port);
+        var searchText = [node.id, node.type, node.name, node.host, node.port].join(" ").toLowerCase();
+        return '<tr data-node-row="1" data-search="' + escapeHtml(searchText) + '" data-node-key="' + escapeHtml(key) + '">' +
+          '<td><input type="checkbox" name="adm_rule_nodes" value="' + escapeHtml(key) + '"' + (checked ? " checked" : "") + '></td>' +
+          '<td>#' + escapeHtml(node.id) + '</td>' +
+          '<td>' + escapeHtml(node.name) + '</td>' +
+          '<td>' + tag(node.type, "gray") + '</td>' +
+          '<td><code>' + escapeHtml(origin) + '</code></td>' +
+          '<td><input class="adm-form-control adm-port-input" name="adm_rule_node_port" data-node-key="' + escapeHtml(key) + '" value="' + escapeHtml(port) + '" placeholder="沿用"></td>' +
+          '<td><code data-preview-key="' + escapeHtml(key) + '">' + escapeHtml(target) + '</code></td>' +
+        '</tr>';
+      }).join("") + '</tbody></table></div>';
+  }
+
+  function renderModal() {
+    if (!state.modalRule) return "";
+    var rule = state.modalRule;
+    var options = state.options || {};
+    return [
+      '<div class="adm-modal-mask">',
+      '  <div class="adm-modal">',
+      '    <div class="adm-modal-head"><div class="adm-modal-title">' + (rule.id ? "编辑规则" : "添加规则") + '</div><button class="adm-btn adm-btn-text" id="adm-modal-close">' + icon("close") + '</button></div>',
+      '    <div class="adm-modal-body"><div class="adm-grid">',
+      '      <div class="adm-span-6">' + field("规则名称", "adm_rule_name", rule.name, "", "") + '</div>',
+      '      <div class="adm-span-6">' + field("入口域名", "adm_rule_domain", rule.domain, "", "edge.example.com") + '</div>',
+      '      <div class="adm-span-3">' + field("排序", "adm_rule_sort", rule.sort, "", "") + '</div>',
+      '      <div class="adm-span-9">' + field("备注", "adm_rule_remark", rule.remark, "", "") + '</div>',
+      '      <div class="adm-span-12"><div class="adm-modal-switches">' + switchInline("启用", "adm_rule_enable_input", rule.enable) + '</div></div>',
+      '      <div class="adm-span-12"><label class="adm-form-label">用户组</label>' + renderCheckboxes("adm_rule_groups", options.user_groups || [], rule.user_group_ids) + '</div>',
+      '      <div class="adm-span-12"><label class="adm-form-label">套餐</label>' + renderCheckboxes("adm_rule_plans", options.plans || [], rule.plan_ids) + '</div>',
+      '      <div class="adm-span-12"><label class="adm-form-label">节点入口</label>' + renderNodeBindings(rule) + '</div>',
+      '    </div></div>',
+      '    <div class="adm-modal-foot"><button class="adm-btn" id="adm-modal-cancel">取消</button><button class="adm-btn adm-btn-primary" id="adm-rule-save">' + icon("check") + '保存</button></div>',
+      '  </div>',
       '</div>'
     ].join("\n");
   }
@@ -356,32 +438,11 @@
     var config = state.config || normalizeConfig({});
     root.innerHTML = [
       '<div class="adm-page" id="adm-panel">',
-      '  <div class="adm-toolbar">',
-      '    <div class="adm-status" id="adm-status"></div>',
-      '    <div class="adm-actions">',
-      '      <button class="adm-btn" id="adm-refresh-btn">' + icon("refresh") + '刷新</button>',
-      '      <button class="adm-btn adm-btn-primary" id="adm-save-config-btn">' + icon("check") + '保存配置</button>',
-      '    </div>',
-      '  </div>',
+      '  <div class="adm-toolbar"><div class="adm-status" id="adm-status"></div><div class="adm-actions"><button class="adm-btn" id="adm-refresh-btn">' + icon("refresh") + '刷新</button><button class="adm-btn adm-btn-primary" id="adm-save-config-btn">' + icon("check") + '保存配置</button></div></div>',
+      '  <div class="adm-block"><div class="adm-block-header"><h3 class="adm-block-title">基础配置</h3></div><div class="adm-block-body">' + renderConfig(config) + '</div></div>',
       '  <div class="adm-block">',
-      '    <div class="adm-block-header"><h3 class="adm-block-title">基础配置</h3></div>',
-      '    <div class="adm-block-body">' + renderConfig(config) + '</div>',
-      '  </div>',
-      '  <div class="adm-block">',
-      '    <div class="adm-block-header">',
-      '      <h3 class="adm-block-title">入口域名规则</h3>',
-      '      <div class="adm-actions">',
-      '        <input class="adm-form-control adm-filter" style="width:220px" id="adm-rule-filter" value="' + escapeHtml(state.filter) + '" placeholder="搜索规则">',
-      '        <select class="adm-form-control adm-filter" style="width:160px" id="adm-group-filter">' + renderGroupOptions() + '</select>',
-      '        <button class="adm-btn adm-btn-primary" id="adm-rule-add">' + icon("plus") + '添加规则</button>',
-      '      </div>',
-      '    </div>',
-      '    <div class="adm-block-body">',
-      '      <div class="adm-table-wrap"><table class="adm-table">',
-      '        <thead><tr><th>排序</th><th>规则</th><th>状态</th><th>入口域名</th><th>匹配对象</th><th>下发</th><th>排序</th><th>操作</th></tr></thead>',
-      '        <tbody>' + renderRuleRows() + '</tbody>',
-      '      </table></div>',
-      '    </div>',
+      '    <div class="adm-block-header"><h3 class="adm-block-title">入口域名规则</h3><div class="adm-actions"><input class="adm-form-control adm-filter" style="width:220px" id="adm-rule-filter" value="' + escapeHtml(state.filter) + '" placeholder="搜索规则"><select class="adm-form-control adm-filter" style="width:160px" id="adm-group-filter">' + renderGroupOptions() + '</select><button class="adm-btn adm-btn-primary" id="adm-rule-add">' + icon("plus") + '添加规则</button></div></div>',
+      '    <div class="adm-block-body"><div class="adm-table-wrap"><table class="adm-table"><thead><tr><th>排序</th><th>规则</th><th>状态</th><th>入口域名</th><th>匹配对象</th><th>绑定</th><th>操作</th></tr></thead><tbody>' + renderRuleRows() + '</tbody></table></div></div>',
       '  </div>',
       '</div>',
       renderModal()
@@ -391,90 +452,94 @@
     return true;
   }
 
-  function renderCheckboxes(name, values, selected) {
-    selected = Array.isArray(selected) ? selected.map(String) : [];
-    return '<div class="adm-checks">' + values.map(function (item) {
-      var value = item.value == null ? item.id : item.value;
-      var label = item.label == null ? item.name : item.label;
-      return '<label class="adm-check"><input type="checkbox" name="' + name + '" value="' + escapeHtml(value) + '"' + (selected.indexOf(String(value)) !== -1 ? " checked" : "") + '> ' + escapeHtml(label) + '</label>';
-    }).join("") + '</div>';
+  function checked(id) {
+    var el = document.getElementById(id);
+    return el && el.checked ? 1 : 0;
   }
 
-  function selectedNodeText(ids, types) {
-    ids = Array.isArray(ids) ? ids : [];
-    types = Array.isArray(types) ? types : [];
-    if (!ids.length) return "全部";
-    var nodes = state.options.nodes || [];
-    var names = [];
-    ids.forEach(function (id) {
-      var matches = nodes.filter(function (node) {
-        return Number(node.id) === Number(id) && (!types.length || types.indexOf(node.type) !== -1);
-      });
-      if (!matches.length) {
-        names.push("#" + id);
-      } else {
-        matches.forEach(function (node) {
-          names.push(node.type + " #" + node.id + " " + node.name);
-        });
-      }
+  function checkedOrConfig(id, key, config) {
+    var el = document.getElementById(id);
+    if (!el) return Number(config[key] || 0);
+    return el.checked ? 1 : 0;
+  }
+
+  function selectedValues(name) {
+    return Array.prototype.slice.call(document.querySelectorAll('input[name="' + name + '"]:checked')).map(function (input) {
+      return Number(input.value);
+    }).filter(function (id) { return id > 0; });
+  }
+
+  function collectConfig(readDom) {
+    var config = state.config || normalizeConfig({});
+    if (readDom === false && !document.getElementById("adm_rule_enable")) return config;
+    return {
+      app_domain_enable: Number(config.app_domain_enable || 0),
+      app_domain_rule_enable: checkedOrConfig("adm_rule_enable", "app_domain_rule_enable", config),
+      app_domain_public_host: (document.getElementById("adm_public_host") || {}).value || config.app_domain_public_host,
+      app_domain_subscribe_path: (document.getElementById("adm_subscribe_path") || {}).value || config.app_domain_subscribe_path,
+      app_domain_replace_host: config.app_domain_replace_host,
+      app_api_domain_enable: checkedOrConfig("adm_api_enable", "app_api_domain_enable", config),
+      app_api_domain_hosts: ((document.getElementById("adm_api_hosts") || {}).value || "").split(/\n+/).map(normalizeEndpoint).filter(Boolean),
+      app_api_domain_encrypt_enable: checkedOrConfig("adm_encrypt_enable", "app_api_domain_encrypt_enable", config),
+      app_api_domain_encrypt_key: (document.getElementById("adm_encrypt_key") || {}).value || config.app_api_domain_encrypt_key
+    };
+  }
+
+  function collectRule() {
+    var current = state.modalRule || emptyRule();
+    return {
+      id: current.id || undefined,
+      name: (document.getElementById("adm_rule_name") || {}).value || "",
+      enable: checked("adm_rule_enable_input"),
+      sort: Number((document.getElementById("adm_rule_sort") || {}).value || 0),
+      domain: normalizeHost((document.getElementById("adm_rule_domain") || {}).value || ""),
+      user_group_ids: selectedValues("adm_rule_groups"),
+      plan_ids: selectedValues("adm_rule_plans"),
+      remark: (document.getElementById("adm_rule_remark") || {}).value || ""
+    };
+  }
+
+  function collectBindings(groupId) {
+    var current = state.modalRule || emptyRule();
+    var existing = bindingMap(current);
+    return Array.prototype.slice.call(document.querySelectorAll('input[name="adm_rule_nodes"]:checked')).map(function (input, index) {
+      var parts = String(input.value || "").split(":");
+      var key = input.value;
+      var portEl = document.querySelector('input[name="adm_rule_node_port"][data-node-key="' + key + '"]');
+      var port = Number((portEl || {}).value || 0) || null;
+      return {
+        id: existing[key] ? existing[key].id : undefined,
+        group_id: groupId,
+        enable: 1,
+        sort: index + 1,
+        server_type: parts[0] || "",
+        server_id: Number(parts[1] || 0),
+        port: port,
+        remark: existing[key] ? existing[key].remark : ""
+      };
     });
-    return names.join(" / ");
   }
 
-  function renderNodeChecks(selectedIds, selectedTypes) {
-    var nodes = state.options.nodes || [];
-    if (!nodes.length) {
-      return '<div class="adm-empty" style="padding:18px 0">暂无节点可选</div>';
-    }
-    selectedIds = Array.isArray(selectedIds) ? selectedIds.map(String) : [];
-    selectedTypes = Array.isArray(selectedTypes) ? selectedTypes : [];
-    return '<div class="adm-node-tools">' +
-      '<input class="adm-form-control" style="width:220px" id="adm_node_filter" placeholder="搜索节点">' +
-      '<button class="adm-btn" id="adm_node_select_visible" type="button">' + icon("check") + '选择当前</button>' +
-      '<button class="adm-btn" id="adm_node_clear" type="button">' + icon("close") + '清空节点</button>' +
-    '</div>' +
-    '<div class="adm-node-table-wrap"><table class="adm-node-table">' +
-      '<thead><tr><th style="width:42px"><input type="checkbox" id="adm_node_check_all"></th><th style="width:90px">节点ID</th><th>节点</th><th style="width:130px">类型</th><th>地址</th></tr></thead>' +
-      '<tbody>' + nodes.map(function (node) {
-      var checked = selectedIds.indexOf(String(node.id)) !== -1 && (!selectedTypes.length || selectedTypes.indexOf(node.type) !== -1);
-      var searchText = [node.id, node.type, node.name, node.host].join(" ").toLowerCase();
-      return '<tr data-node-row="1" data-search="' + escapeHtml(searchText) + '">' +
-        '<td><input type="checkbox" name="adm_rule_nodes" value="' + escapeHtml(node.id) + '" data-type="' + escapeHtml(node.type) + '"' + (checked ? " checked" : "") + '></td>' +
-        '<td>#' + escapeHtml(node.id) + '</td>' +
-        '<td>' + escapeHtml(node.name) + '</td>' +
-        '<td>' + tag(node.type, "gray") + '</td>' +
-        '<td><code>' + escapeHtml(node.host || "-") + '</code></td>' +
-      '</tr>';
-    }).join("") + '</tbody></table></div>';
+  function updatePreview() {
+    var config = collectConfig(false);
+    var subscribe = document.getElementById("adm-preview-subscribe");
+    var api = document.getElementById("adm-preview-api");
+    if (subscribe) subscribe.textContent = subscribePreview(config);
+    if (api) api.textContent = apiPreview(config);
+    updateNodePreviews();
   }
 
-  function renderModal() {
-    if (!state.modalRule) return "";
-    var rule = state.modalRule;
-    var options = state.options || {};
-    return [
-      '<div class="adm-modal-mask" id="adm-rule-modal">',
-      '  <div class="adm-modal">',
-      '    <div class="adm-modal-head"><div class="adm-modal-title">' + (rule.id ? "编辑规则" : "添加规则") + '</div><button class="adm-btn adm-btn-text" id="adm-modal-close">' + icon("close") + '</button></div>',
-      '    <div class="adm-modal-body">',
-      '      <div class="adm-grid">',
-      '        <div class="adm-span-6">' + field("规则名称", "adm_rule_name", rule.name, "", "") + '</div>',
-      '        <div class="adm-span-6">' + field("入口域名", "adm_rule_domain", rule.domain, "", "edge.example.com") + '</div>',
-      '        <div class="adm-span-3">' + field("排序", "adm_rule_sort", rule.sort, "", "") + '</div>',
-      '        <div class="adm-span-9">' + field("备注", "adm_rule_remark", rule.remark, "", "") + '</div>',
-      '        <div class="adm-span-12"><div class="adm-modal-switches">' + switchInline("启用", "adm_rule_enable_input", rule.enable) + switchInline("同步订阅入口", "adm_rule_replace_subscribe", rule.replace_subscribe_host) + '</div></div>',
-      '        <div class="adm-span-12"><label class="adm-form-label">用户组</label>' + renderCheckboxes("adm_rule_groups", options.user_groups || [], rule.user_group_ids) + '</div>',
-      '        <div class="adm-span-12"><label class="adm-form-label">套餐</label>' + renderCheckboxes("adm_rule_plans", options.plans || [], rule.plan_ids) + '</div>',
-      '        <div class="adm-span-12"><label class="adm-form-label">节点</label>' + renderNodeChecks(rule.server_ids, rule.server_types) + '</div>',
-      '      </div>',
-      '    </div>',
-      '    <div class="adm-modal-foot">',
-      '      <button class="adm-btn" id="adm-modal-cancel">取消</button>',
-      '      <button class="adm-btn adm-btn-primary" id="adm-rule-save">' + icon("check") + '保存</button>',
-      '    </div>',
-      '  </div>',
-      '</div>'
-    ].join("\n");
+  function updateNodePreviews() {
+    if (!state.modalRule) return;
+    var domain = normalizeHost((document.getElementById("adm_rule_domain") || {}).value || state.modalRule.domain || "入口域名");
+    Array.prototype.slice.call(document.querySelectorAll("[data-preview-key]")).forEach(function (preview) {
+      var key = preview.getAttribute("data-preview-key");
+      var parts = key.split(":");
+      var node = findNode(parts[0], parts[1]);
+      var portEl = document.querySelector('input[name="adm_rule_node_port"][data-node-key="' + key + '"]');
+      var port = Number((portEl || {}).value || 0) || (node ? node.port : "");
+      preview.textContent = endpoint(domain, port);
+    });
   }
 
   function bindEvents() {
@@ -497,12 +562,8 @@
       var rule = state.rules.find(function (item) { return Number(item.id) === id; });
       var edit = row.querySelector(".adm-rule-edit");
       var drop = row.querySelector(".adm-rule-drop");
-      var up = row.querySelector(".adm-rule-up");
-      var down = row.querySelector(".adm-rule-down");
       if (edit) edit.addEventListener("click", function () { state.modalRule = normalizeRule(rule); renderPage(); });
       if (drop) drop.addEventListener("click", function () { dropRule(rule); });
-      if (up) up.addEventListener("click", function () { moveRule(rule, -1); });
-      if (down) down.addEventListener("click", function () { moveRule(rule, 1); });
     });
     var close = document.getElementById("adm-modal-close");
     var cancel = document.getElementById("adm-modal-cancel");
@@ -518,12 +579,17 @@
     var selectVisible = document.getElementById("adm_node_select_visible");
     var clear = document.getElementById("adm_node_clear");
     var checkAll = document.getElementById("adm_node_check_all");
+    var domain = document.getElementById("adm_rule_domain");
     var rows = function () {
       return Array.prototype.slice.call(document.querySelectorAll("[data-node-row]"));
     };
     var visibleRows = function () {
       return rows().filter(function (row) { return row.style.display !== "none"; });
     };
+    if (domain) domain.addEventListener("input", updateNodePreviews);
+    Array.prototype.slice.call(document.querySelectorAll('input[name="adm_rule_node_port"]')).forEach(function (input) {
+      input.addEventListener("input", updateNodePreviews);
+    });
     if (filter) filter.addEventListener("input", function () {
       var q = String(filter.value || "").trim().toLowerCase();
       rows().forEach(function (row) {
@@ -551,100 +617,13 @@
     });
   }
 
-  function updatePreview() {
-    var config = collectConfig(false);
-    var subscribe = document.getElementById("adm-preview-subscribe");
-    var api = document.getElementById("adm-preview-api");
-    if (subscribe) subscribe.textContent = subscribePreview(config);
-    if (api) api.textContent = apiPreview(config);
-  }
-
-  function checked(id) {
-    var el = document.getElementById(id);
-    return el && el.checked ? 1 : 0;
-  }
-
-  function checkedOrConfig(id, key, config) {
-    var el = document.getElementById(id);
-    if (!el) return Number(config[key] || 0);
-    return el.checked ? 1 : 0;
-  }
-
-  function collectConfig(readDom) {
-    var config = state.config || normalizeConfig({});
-    if (readDom === false && !document.getElementById("adm_rule_enable")) return config;
-    return {
-      app_domain_enable: checkedOrConfig("adm_domain_enable", "app_domain_enable", config),
-      app_domain_rule_enable: checkedOrConfig("adm_rule_enable", "app_domain_rule_enable", config),
-      app_domain_public_host: (document.getElementById("adm_public_host") || {}).value || config.app_domain_public_host,
-      app_domain_subscribe_path: (document.getElementById("adm_subscribe_path") || {}).value || config.app_domain_subscribe_path,
-      app_domain_replace_host: (document.getElementById("adm_replace_host") || {}).value || config.app_domain_replace_host,
-      app_api_domain_enable: checkedOrConfig("adm_api_enable", "app_api_domain_enable", config),
-      app_api_domain_hosts: ((document.getElementById("adm_api_hosts") || {}).value || "").split(/\n+/).map(normalizeEndpoint).filter(Boolean),
-      app_api_domain_encrypt_enable: checkedOrConfig("adm_encrypt_enable", "app_api_domain_encrypt_enable", config),
-      app_api_domain_encrypt_key: (document.getElementById("adm_encrypt_key") || {}).value || config.app_api_domain_encrypt_key
-    };
-  }
-
-  function selectedValues(name) {
-    return Array.prototype.slice.call(document.querySelectorAll('input[name="' + name + '"]:checked')).map(function (input) {
-      var raw = input.value;
-      return /^\d+$/.test(raw) ? Number(raw) : raw;
-    });
-  }
-
-  function selectedNodeValues() {
-    return Array.prototype.slice.call(document.querySelectorAll('input[name="adm_rule_nodes"]:checked')).map(function (input) {
-      return {
-        id: Number(input.value),
-        type: input.getAttribute("data-type") || ""
-      };
-    }).filter(function (item) {
-      return item.id > 0;
-    });
-  }
-
-  function parseIds(value) {
-    return String(value || "").split(/[,，\s]+/).map(function (item) {
-      return Number(item);
-    }).filter(function (id) { return id > 0; });
-  }
-
-  function collectRule() {
-    var current = state.modalRule || emptyRule();
-    var selectedNodes = selectedNodeValues();
-    var selectedTypes = [];
-    selectedNodes.forEach(function (node) {
-      if (node.type && selectedTypes.indexOf(node.type) === -1) selectedTypes.push(node.type);
-    });
-    return {
-      id: current.id || undefined,
-      name: (document.getElementById("adm_rule_name") || {}).value || "",
-      enable: checked("adm_rule_enable_input"),
-      sort: Number((document.getElementById("adm_rule_sort") || {}).value || 0),
-      domain: normalizeHost((document.getElementById("adm_rule_domain") || {}).value || ""),
-      user_group_ids: selectedValues("adm_rule_groups").map(Number),
-      plan_ids: selectedValues("adm_rule_plans").map(Number),
-      server_types: selectedTypes,
-      server_ids: selectedNodes.map(function (node) { return node.id; }),
-      protocols: [],
-      replace_node_host: 1,
-      replace_subscribe_host: checked("adm_rule_replace_subscribe"),
-      remark: (document.getElementById("adm_rule_remark") || {}).value || ""
-    };
-  }
-
   function saveConfigForm() {
-    var button = document.getElementById("adm-save-config-btn");
-    if (button) button.disabled = true;
     setStatus("保存中...");
     request("POST", "/server/app-domain/config", collectConfig()).then(function () {
       setStatus("保存成功", "success");
       return loadAll(true);
     }).catch(function (error) {
       setStatus(error.message || "保存失败", "error");
-    }).finally(function () {
-      if (button) button.disabled = false;
     });
   }
 
@@ -654,7 +633,23 @@
       setStatus("规则名称和入口域名不能为空", "error");
       return;
     }
-    request("POST", "/server/app-domain/rule/save", payload).then(function () {
+    request("POST", "/server/app-domain/group/save", payload).then(function (response) {
+      var groupId = Number(response.data || payload.id || 0);
+      var selected = collectBindings(groupId);
+      var selectedKeys = {};
+      selected.forEach(function (binding) {
+        selectedKeys[nodeKey(binding.server_type, binding.server_id)] = true;
+      });
+      var existingDrops = (state.modalRule.bindings || []).filter(function (binding) {
+        return !selectedKeys[nodeKey(binding.server_type, binding.server_id)];
+      });
+      var tasks = selected.map(function (binding) {
+        return request("POST", "/server/app-domain/binding/save", binding);
+      }).concat(existingDrops.map(function (binding) {
+        return request("POST", "/server/app-domain/binding/drop", { id: binding.id });
+      }));
+      return Promise.all(tasks);
+    }).then(function () {
       state.modalRule = null;
       setStatus("规则已保存", "success");
       return loadAll(true);
@@ -665,30 +660,11 @@
 
   function dropRule(rule) {
     if (!rule || !window.confirm("删除规则：" + rule.name + "？")) return;
-    request("POST", "/server/app-domain/rule/drop", { id: rule.id }).then(function () {
+    request("POST", "/server/app-domain/group/drop", { id: rule.id }).then(function () {
       setStatus("规则已删除", "success");
       return loadAll(true);
     }).catch(function (error) {
       setStatus(error.message || "删除失败", "error");
-    });
-  }
-
-  function moveRule(rule, direction) {
-    var rules = (state.rules || []).slice().sort(function (a, b) {
-      return Number(a.sort || 0) - Number(b.sort || 0) || Number(a.id || 0) - Number(b.id || 0);
-    });
-    var index = rules.findIndex(function (item) { return Number(item.id) === Number(rule.id); });
-    var next = index + direction;
-    if (index < 0 || next < 0 || next >= rules.length) return;
-    var tmp = rules[index];
-    rules[index] = rules[next];
-    rules[next] = tmp;
-    request("POST", "/server/app-domain/rule/sort", {
-      rule_ids: rules.map(function (item) { return item.id; })
-    }).then(function () {
-      return loadAll(true);
-    }).catch(function (error) {
-      setStatus(error.message || "排序失败", "error");
     });
   }
 
@@ -702,7 +678,7 @@
     state.loading = true;
     loadingPromise = Promise.all([
       request("GET", "/server/app-domain/config"),
-      request("GET", "/server/app-domain/rules"),
+      request("GET", "/server/app-domain/groups"),
       request("GET", "/server/app-domain/options")
     ]).then(function (responses) {
       state.config = normalizeConfig(responses[0].data || {});

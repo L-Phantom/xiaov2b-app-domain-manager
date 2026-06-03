@@ -144,6 +144,8 @@ This means panel upgrades do not have to preserve App-specific full-meta logic f
 ## App Domain Rule UI
 
 - Daily入口域名分发 should be managed from `入口域名规则`, not from node management.
-- Rule forms should stay close to native xiaov2b admin behavior: rule name,入口域名, user groups, plans, and a node table populated from existing server tables.
-- Protocol/type filters are stored for compatibility, but normal UI should derive them from selected nodes and avoid exposing them as separate required concepts.
+- UI should keep the native rule-management shape. Internally, entrance groups behave like parent rules: they carry the replacement host and user/plan scope. Bindings behave like child node entries: they carry server type/id and optional replacement port.
+- Binding `port` is optional and only affects node entry delivery. Empty `port` keeps the original node port for backward compatibility.
+- When rule mode is enabled, matching bindings override node host/port even if the legacy per-node `app_domain_replace` field is 0. That legacy field only gates the old global replacement path.
+- Old `v2_app_domain_rules` rows remain available as compatibility fallback, but normal UI should not expose them as the primary operation surface.
 - The node management `app_domain_replace` field remains available to existing controllers and old data, but its visible `域名替换` table/mobile controls are hidden to avoid a second competing policy surface.

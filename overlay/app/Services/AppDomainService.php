@@ -3,6 +3,8 @@
 namespace App\Services;
 
 use App\Models\AppDomainRule;
+use App\Models\AppDomainBinding;
+use App\Models\AppDomainGroup;
 use App\Models\Plan;
 use App\Models\ServerGroup;
 use App\Models\User;
@@ -172,24 +174,184 @@ class AppDomainService
 
     public function applyToServer($user, array $server): array
     {
-        if ((int) ($server['app_domain_replace'] ?? 1) !== 1) {
+        $bindingPayload = $this->matchBindingPayload($user, $server);
+        if ($bindingPayload) {
+            $server['host'] = $bindingPayload['domain'];
+            if ((int) ($bindingPayload['port'] ?? 0) > 0) {
+                $server['port'] = (int) $bindingPayload['port'];
+            }
             return $server;
         }
 
         $rule = $this->matchRule($user, $server);
         if ($rule && (int) $rule->replace_node_host === 1) {
-            $replaceHost = $this->normalizeHost($rule->domain);
-        } elseif ((int) config('v2board.app_domain_rule_enable', 0) === 1 && $this->rulesTableExists()) {
-            $replaceHost = '';
-        } else {
-            $replaceHost = $this->resolveGlobalReplaceHost();
+            $server['host'] = $this->normalizeHost($rule->domain);
+            if ((int) ($rule->port ?? 0) > 0) {
+                $server['port'] = (int) $rule->port;
+            }
+            return $server;
         }
 
+        if ((int) config('v2board.app_domain_rule_enable', 0) === 1 && $this->rulesTableExists()) {
+            return $server;
+        }
+
+        if ((int) ($server['app_domain_replace'] ?? 1) !== 1) {
+            return $server;
+        }
+
+        $replaceHost = $this->resolveGlobalReplaceHost();
         if ($replaceHost !== '') {
             $server['host'] = $replaceHost;
         }
 
         return $server;
+    }
+
+    public function getGroups(): array
+    {
+        if (!$this->groupsTableExists()) {
+            return [];
+        }
+
+        return AppDomainGroup::with('bindings')
+            ->orderBy('sort', 'ASC')
+            ->orderBy('id', 'ASC')
+            ->get()
+            ->map(function ($group) {
+                $payload = $group->toArray();
+                $payload['bindings'] = $group->bindings
+                    ->sort(function ($a, $b) {
+                        return ((int) $a->sort <=> (int) $b->sort) ?: ((int) $a->id <=> (int) $b->id);
+                    })
+                    ->values()
+                    ->toArray();
+                return $payload;
+            })
+            ->toArray();
+    }
+
+    public function saveGroup(array $data): int
+    {
+        if (!$this->groupsTableExists()) {
+            abort(500, '入口组表不存在，请先执行迁移脚本');
+        }
+
+        $payload = [
+            'name' => trim((string) ($data['name'] ?? '')),
+            'enable' => (int) ($data['enable'] ?? 1),
+            'sort' => (int) ($data['sort'] ?? 0),
+            'domain' => $this->normalizeHost($data['domain'] ?? ''),
+            'user_group_ids' => $this->normalizeIds($data['user_group_ids'] ?? []),
+            'plan_ids' => $this->normalizeIds($data['plan_ids'] ?? []),
+            'remark' => trim((string) ($data['remark'] ?? '')),
+        ];
+
+        if ($payload['name'] === '') {
+            abort(500, '入口组名称不能为空');
+        }
+        if ($payload['domain'] === '') {
+            abort(500, '入口域名不能为空');
+        }
+
+        if (!empty($data['id'])) {
+            $group = AppDomainGroup::find((int) $data['id']);
+            if (!$group) {
+                abort(500, '入口组不存在');
+            }
+            $group->update($payload);
+            return (int) $group->id;
+        }
+
+        return (int) AppDomainGroup::create($payload)->id;
+    }
+
+    public function dropGroup(int $id): bool
+    {
+        if (!$this->groupsTableExists() || !$this->bindingsTableExists()) {
+            abort(500, '入口组表不存在，请先执行迁移脚本');
+        }
+
+        $group = AppDomainGroup::find($id);
+        if (!$group) {
+            abort(500, '入口组不存在');
+        }
+
+        DB::beginTransaction();
+        try {
+            AppDomainBinding::where('group_id', $id)->delete();
+            $group->delete();
+            DB::commit();
+        } catch (\Exception $e) {
+            DB::rollBack();
+            abort(500, '入口组删除失败');
+        }
+
+        return true;
+    }
+
+    public function saveBinding(array $data): int
+    {
+        if (!$this->groupsTableExists() || !$this->bindingsTableExists()) {
+            abort(500, '入口绑定表不存在，请先执行迁移脚本');
+        }
+
+        $serverType = trim((string) ($data['server_type'] ?? ''));
+        if (!in_array($serverType, self::SUPPORTED_SERVER_TYPES, true)) {
+            abort(500, '节点类型不正确');
+        }
+
+        $payload = [
+            'group_id' => (int) ($data['group_id'] ?? 0),
+            'enable' => (int) ($data['enable'] ?? 1),
+            'sort' => (int) ($data['sort'] ?? 0),
+            'server_type' => $serverType,
+            'server_id' => (int) ($data['server_id'] ?? 0),
+            'port' => $this->normalizePort($data['port'] ?? null),
+            'remark' => trim((string) ($data['remark'] ?? '')),
+        ];
+
+        if (!$payload['group_id'] || !AppDomainGroup::where('id', $payload['group_id'])->exists()) {
+            abort(500, '入口组不存在');
+        }
+        if (!$payload['server_id']) {
+            abort(500, '请选择节点');
+        }
+
+        $query = AppDomainBinding::where('group_id', $payload['group_id'])
+            ->where('server_type', $payload['server_type'])
+            ->where('server_id', $payload['server_id']);
+        if (!empty($data['id'])) {
+            $query->where('id', '<>', (int) $data['id']);
+        }
+        if ($query->exists()) {
+            abort(500, '该入口组已绑定这个节点');
+        }
+
+        if (!empty($data['id'])) {
+            $binding = AppDomainBinding::find((int) $data['id']);
+            if (!$binding) {
+                abort(500, '入口绑定不存在');
+            }
+            $binding->update($payload);
+            return (int) $binding->id;
+        }
+
+        return (int) AppDomainBinding::create($payload)->id;
+    }
+
+    public function dropBinding(int $id): bool
+    {
+        if (!$this->bindingsTableExists()) {
+            abort(500, '入口绑定表不存在，请先执行迁移脚本');
+        }
+
+        $binding = AppDomainBinding::find($id);
+        if (!$binding) {
+            abort(500, '入口绑定不存在');
+        }
+
+        return (bool) $binding->delete();
     }
 
     public function getRules(): array
@@ -215,6 +377,7 @@ class AppDomainService
             'enable' => (int) $data['enable'],
             'sort' => (int) ($data['sort'] ?? 0),
             'domain' => $this->normalizeHost($data['domain'] ?? ''),
+            'port' => $this->normalizePort($data['port'] ?? null),
             'user_group_ids' => $this->normalizeIds($data['user_group_ids'] ?? []),
             'plan_ids' => $this->normalizeIds($data['plan_ids'] ?? []),
             'server_types' => $this->normalizeStrings($data['server_types'] ?? []),
@@ -283,6 +446,8 @@ class AppDomainService
             'plans' => class_exists(Plan::class) && $this->tableExists('v2_plan') ? Plan::orderBy('sort', 'ASC')->get(['id', 'name'])->toArray() : [],
             'nodes' => $this->getNodeOptions(),
             'rules_table_exists' => $this->rulesTableExists(),
+            'groups_table_exists' => $this->groupsTableExists(),
+            'bindings_table_exists' => $this->bindingsTableExists(),
         ];
     }
 
@@ -432,6 +597,58 @@ class AppDomainService
         return true;
     }
 
+    protected function groupMatchesUser(AppDomainGroup $group, $user): bool
+    {
+        if (!$this->matchesScope($group->user_group_ids, [(int) ($user->group_id ?? 0)])) {
+            return false;
+        }
+        if (!$this->matchesScope($group->plan_ids, [(int) ($user->plan_id ?? 0)])) {
+            return false;
+        }
+
+        return true;
+    }
+
+    protected function matchBindingPayload($user, array $server): ?array
+    {
+        if ((int) config('v2board.app_domain_rule_enable', 0) !== 1 || !$this->groupsTableExists() || !$this->bindingsTableExists()) {
+            return null;
+        }
+
+        $serverType = (string) ($server['type'] ?? ($server['protocol'] ?? ''));
+        $serverId = (int) ($server['id'] ?? 0);
+        if ($serverType === '' || !$serverId) {
+            return null;
+        }
+
+        $groups = AppDomainGroup::with(['bindings' => function ($query) use ($serverType, $serverId) {
+                $query->where('enable', 1)
+                    ->where('server_type', $serverType)
+                    ->where('server_id', $serverId)
+                    ->orderBy('sort', 'ASC')
+                    ->orderBy('id', 'ASC');
+            }])
+            ->where('enable', 1)
+            ->orderBy('sort', 'ASC')
+            ->orderBy('id', 'ASC')
+            ->get();
+
+        foreach ($groups as $group) {
+            if (!$this->groupMatchesUser($group, $user) || $group->bindings->isEmpty()) {
+                continue;
+            }
+            $binding = $group->bindings->first();
+            return [
+                'domain' => $this->normalizeHost($group->domain),
+                'port' => $binding->port,
+                'group_id' => (int) $group->id,
+                'binding_id' => (int) $binding->id,
+            ];
+        }
+
+        return null;
+    }
+
     protected function matchesScope($scope, array $values): bool
     {
         $scope = is_array($scope) ? array_values(array_filter($scope, function ($item) {
@@ -473,9 +690,29 @@ class AppDomainService
         }, $items))));
     }
 
+    protected function normalizePort($port): ?int
+    {
+        if ($port === null || $port === '') {
+            return null;
+        }
+
+        $port = (int) $port;
+        return $port >= 1 && $port <= 65535 ? $port : null;
+    }
+
     protected function rulesTableExists(): bool
     {
         return $this->tableExists('v2_app_domain_rules');
+    }
+
+    protected function groupsTableExists(): bool
+    {
+        return $this->tableExists('v2_app_domain_groups');
+    }
+
+    protected function bindingsTableExists(): bool
+    {
+        return $this->tableExists('v2_app_domain_bindings');
     }
 
     protected function tableExists(string $table): bool
@@ -507,6 +744,9 @@ class AppDomainService
             if (Schema::hasColumn($table, 'host')) {
                 $columns[] = 'host';
             }
+            if (Schema::hasColumn($table, 'port')) {
+                $columns[] = 'port';
+            }
             $query = DB::table($table)->select($columns);
             if (Schema::hasColumn($table, 'sort')) {
                 $query->orderBy('sort', 'ASC');
@@ -518,6 +758,7 @@ class AppDomainService
                     'type' => $type,
                     'name' => $row->name,
                     'host' => $row->host ?? '',
+                    'port' => $row->port ?? '',
                     'label' => sprintf('%s #%s %s', $type, $row->id, $row->name),
                 ];
             }

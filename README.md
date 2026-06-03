@@ -156,19 +156,24 @@ php82 scripts/scenario_verify.php /path/to/v2board-root app-edge.example.com
 新增接口：
 - `GET /api/v1/{secure_path}/server/app-domain/config`
 - `POST /api/v1/{secure_path}/server/app-domain/config`
+- `GET /api/v1/{secure_path}/server/app-domain/groups`
+- `POST /api/v1/{secure_path}/server/app-domain/group/save`
+- `POST /api/v1/{secure_path}/server/app-domain/group/drop`
+- `POST /api/v1/{secure_path}/server/app-domain/binding/save`
+- `POST /api/v1/{secure_path}/server/app-domain/binding/drop`
 - `GET /api/v1/{secure_path}/server/app-domain/rules`
 - `POST /api/v1/{secure_path}/server/app-domain/rule/save`
 - `POST /api/v1/{secure_path}/server/app-domain/rule/drop`
 - `POST /api/v1/{secure_path}/server/app-domain/rule/sort`
 - `GET /api/v1/{secure_path}/server/app-domain/options`
 
-规则表存在且 `app_domain_rule_enable=1` 时，`AppDomainService` 会优先按规则匹配用户组、套餐和节点范围。没有命中规则的节点保持原始入口地址，不再自动回落全局 App 域名配置；旧的全局替换配置仅在规则功能关闭时作为兼容路径生效。
+规则表存在且 `app_domain_rule_enable=1` 时，`AppDomainService` 会优先按入口域名规则匹配用户组、套餐和节点范围。命中规则内的节点入口后直接用规则入口域名覆盖节点 host，并按节点行里的入口端口覆盖节点 port；入口端口留空时沿用节点原端口。没有命中节点入口时会继续兼容旧规则表；旧规则也未命中时节点保持原始入口地址，不再自动回落全局 App 域名配置。
 
 后台 UI 的日常使用方式：
-- 在 `入口域名规则` 中填写入口域名。
-- 勾选需要命中的用户组、套餐和节点；节点列表直接来自现有节点表。
-- 不勾选节点时表示该规则对匹配用户范围内的全部节点生效。
-- 节点管理页不再展示独立的 `域名替换` 列，避免形成第二套入口域名策略；底层字段仍保留用于旧站点兼容和紧急兜底。
+- 在 `入口域名规则` 中填写规则名称、入口域名，并选择适用用户组、套餐。
+- 在规则弹窗里的 `节点入口` 列表中选择具体节点；入口端口留空时沿用节点原端口，填写时覆盖下发端口。
+- 节点列表直接来自现有节点表，操作方式接近节点父子关系：规则像父级，节点入口像子级。
+- 节点管理页不再展示独立的 `域名替换` 列，避免形成第二套入口域名策略；底层字段仅在规则功能关闭、走旧全局替换时继续兼容。
 
 后台入口：
 - 主入口：`/{secure_path}#/server/app-domain`
