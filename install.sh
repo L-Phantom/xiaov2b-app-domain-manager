@@ -164,6 +164,29 @@ PHP
   )"
 
   if [[ "$WEBMAN_PID" =~ ^[0-9]+$ ]]; then
+    RESTART_WEBMAN=1
+    TARGET_REALPATH="$(cd "$TARGET_DIR" && pwd)"
+    if [ -d "/proc/$WEBMAN_PID" ]; then
+      WEBMAN_CWD="$(readlink "/proc/$WEBMAN_PID/cwd" 2>/dev/null || true)"
+      WEBMAN_CMD="$(tr '\0' ' ' < "/proc/$WEBMAN_PID/cmdline" 2>/dev/null || true)"
+      if [ -n "$WEBMAN_CWD" ] && [ "$WEBMAN_CWD" != "$TARGET_REALPATH" ]; then
+        echo "Skip Webman restart: cached PID $WEBMAN_PID belongs to $WEBMAN_CWD, not $TARGET_REALPATH"
+        RESTART_WEBMAN=0
+      elif [ -n "$WEBMAN_CMD" ] && [[ "$WEBMAN_CMD" != *"webman.php"* ]]; then
+        echo "Skip Webman restart: cached PID $WEBMAN_PID is not a webman.php process"
+        RESTART_WEBMAN=0
+      fi
+    elif ! kill -0 "$WEBMAN_PID" 2>/dev/null; then
+      echo "Skip Webman restart: cached PID $WEBMAN_PID is not running"
+      RESTART_WEBMAN=0
+    fi
+
+    if [ "$RESTART_WEBMAN" = "0" ]; then
+      WEBMAN_PID=""
+    fi
+  fi
+
+  if [[ "$WEBMAN_PID" =~ ^[0-9]+$ ]]; then
     (
       cd "$TARGET_DIR"
       if [ -f webman.php ]; then
