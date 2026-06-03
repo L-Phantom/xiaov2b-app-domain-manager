@@ -7,6 +7,7 @@
     filter: "",
     groupFilter: "",
     activeTab: "basic",
+    expandedRules: {},
     modalRule: null,
     loading: false
   };
@@ -159,8 +160,17 @@
       ".adm-table-wrap{overflow:auto;border:0;border-radius:0;}",
       ".adm-table{width:100%;border-collapse:collapse;background:#fff;min-width:980px;}",
       ".adm-table th{height:42px;background:#f8f9fc;color:#566070;font-size:12px;font-weight:600;text-align:left;padding:0 12px;border-bottom:1px solid #eef0f4;white-space:nowrap;}",
-      ".adm-table td{font-size:13px;color:#2f3542;padding:12px;border-bottom:1px solid #f0f2f5;vertical-align:top;}",
+      ".adm-table td{font-size:13px;color:#2f3542;padding:12px;border-bottom:1px solid #f0f2f5;vertical-align:middle;}",
       ".adm-table tr:last-child td{border-bottom:0;}",
+      ".adm-rule-name{font-weight:600;color:#2f3542;line-height:1.5;}",
+      ".adm-rule-remark{font-size:13px;color:#7b8494;line-height:1.5;margin-top:2px;}",
+      ".adm-rule-domain{display:inline-block;max-width:420px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#d9488a;font-size:12px;vertical-align:middle;}",
+      ".adm-scope-cell{display:flex;flex-direction:column;gap:8px;align-items:flex-start;justify-content:center;min-height:46px;}",
+      ".adm-scope-line{display:flex;gap:6px;flex-wrap:wrap;align-items:center;}",
+      ".adm-node-preview{display:flex;gap:6px;flex-wrap:wrap;align-items:center;max-width:720px;}",
+      ".adm-node-chip{display:inline-flex;align-items:center;max-width:210px;height:24px;padding:0 8px;border-radius:4px;background:#f4f6f9;color:#626c7c;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}",
+      ".adm-node-toggle{height:24px;border:0;background:transparent;color:#1890ff;padding:0 2px;font-size:12px;cursor:pointer;}",
+      ".adm-node-toggle:hover{color:#096dd9;text-decoration:underline;}",
       ".adm-badge{display:inline-flex;align-items:center;height:22px;padding:0 8px;border-radius:4px;font-size:12px;background:#eef2ff;color:#3150b7;white-space:nowrap;}",
       ".adm-badge.gray{background:#f1f3f5;color:#596273}.adm-badge.green{background:#e9f8ef;color:#137447}.adm-badge.red{background:#fff1f0;color:#b42318}",
       ".adm-tags{display:flex;gap:6px;flex-wrap:wrap;max-width:360px;}",
@@ -318,19 +328,36 @@
   function nodeSummary(rule) {
     var bindings = rule.bindings || [];
     if (!bindings.length) return "未绑定";
-    return bindings.map(function (binding) {
+    return nodeLabels(rule).join(" / ");
+  }
+
+  function nodeLabels(rule) {
+    return (rule.bindings || []).map(function (binding) {
       var node = findNode(binding.server_type, binding.server_id);
       var name = node ? node.name : binding.server_id;
       return binding.server_type + " #" + binding.server_id + " " + name + (binding.port ? ":" + binding.port : "");
-    }).join(" / ");
+    });
   }
 
   function scopeTags(rule) {
     var options = state.options || {};
-    return '<div class="adm-tags">' +
-      tag("组 " + selectedText(rule.user_group_ids, options.user_groups), "gray") +
-      tag("套餐 " + selectedText(rule.plan_ids, options.plans), "gray") +
-      tag("节点 " + nodeSummary(rule), "gray") +
+    var labels = nodeLabels(rule);
+    var expanded = !!state.expandedRules[String(rule.id)];
+    var visible = expanded ? labels : labels.slice(0, 3);
+    var remain = Math.max(labels.length - visible.length, 0);
+    var nodes = labels.length
+      ? '<div class="adm-node-preview">' + visible.map(function (label) {
+          return '<span class="adm-node-chip" title="' + escapeHtml(label) + '">' + escapeHtml(label) + '</span>';
+        }).join("") + (remain > 0
+          ? '<button class="adm-node-toggle" type="button" data-rule-expand="' + escapeHtml(rule.id) + '">展开 ' + remain + ' 个</button>'
+          : (expanded && labels.length > 3 ? '<button class="adm-node-toggle" type="button" data-rule-collapse="' + escapeHtml(rule.id) + '">收起</button>' : '')) + '</div>'
+      : '<div class="adm-node-preview">' + tag("节点 未绑定", "gray") + '</div>';
+    return '<div class="adm-scope-cell">' +
+      '<div class="adm-scope-line">' +
+        tag("组 " + selectedText(rule.user_group_ids, options.user_groups), "gray") +
+        tag("套餐 " + selectedText(rule.plan_ids, options.plans), "gray") +
+      '</div>' +
+      nodes +
       '</div>';
   }
 
@@ -386,9 +413,9 @@
     return rules.map(function (rule, index) {
       return '<tr data-rule-id="' + escapeHtml(rule.id) + '">' +
         '<td>' + escapeHtml(rule.sort || index + 1) + '</td>' +
-        '<td><strong>' + escapeHtml(rule.name) + '</strong>' + (rule.remark ? '<div class="adm-status">' + escapeHtml(rule.remark) + '</div>' : '') + '</td>' +
+        '<td><div class="adm-rule-name">' + escapeHtml(rule.name) + '</div>' + (rule.remark ? '<div class="adm-rule-remark">' + escapeHtml(rule.remark) + '</div>' : '') + '</td>' +
         '<td><div class="adm-switch-line">' + switchHtml("adm_rule_enable_" + rule.id, rule.enable) + '<span class="adm-status">' + (rule.enable ? "开启" : "关闭") + '</span></div></td>' +
-        '<td><code>' + escapeHtml(rule.domain) + '</code></td>' +
+        '<td><span class="adm-rule-domain" title="' + escapeHtml(rule.domain) + '">' + escapeHtml(rule.domain) + '</span></td>' +
         '<td>' + scopeTags(rule) + '</td>' +
         '<td>' + tag((rule.bindings || []).length + " 个节点", "green") + '</td>' +
         '<td><button class="adm-btn adm-rule-edit">' + icon("pencil") + '编辑</button> <button class="adm-btn adm-btn-danger adm-rule-drop">' + icon("trash") + '删除</button></td>' +
@@ -648,6 +675,18 @@
       if (edit) edit.addEventListener("click", function () { state.modalRule = normalizeRule(rule); renderPage(); });
       if (drop) drop.addEventListener("click", function () { dropRule(rule); });
       if (enable) enable.addEventListener("change", function () { saveRuleEnable(rule, enable.checked ? 1 : 0); });
+    });
+    Array.prototype.slice.call(document.querySelectorAll("[data-rule-expand]")).forEach(function (button) {
+      button.addEventListener("click", function () {
+        state.expandedRules[String(button.getAttribute("data-rule-expand"))] = true;
+        refreshRuleTable();
+      });
+    });
+    Array.prototype.slice.call(document.querySelectorAll("[data-rule-collapse]")).forEach(function (button) {
+      button.addEventListener("click", function () {
+        delete state.expandedRules[String(button.getAttribute("data-rule-collapse"))];
+        refreshRuleTable();
+      });
     });
   }
 
