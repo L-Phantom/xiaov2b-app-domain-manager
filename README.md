@@ -6,6 +6,7 @@
 - 在后台 `服务器` 分类下增加 `App域名管理`
 - 增加 `App 专用订阅`、`App bootstrap`、`App API 多域名`
 - 增加 `App 专用完整 Meta 订阅`，供客户端第二阶段静默升级使用
+- 增加 `/api/v2/app/*` App API 兼容层，覆盖启动、能力、登录会话、用户信息、节点清单、套餐、订单、公告、诊断上报等客户端页面能力
 - 在节点管理里增加 `App可见` 开关
 - 入口域名替换由规则页统一管理，可按节点、套餐、权限组分发
 - 让普通网页订阅与 App 专用订阅分流
@@ -55,6 +56,10 @@
   App 域名分发规则表 SQL
 - `overlay/resources/rules/app.meta.clash.yaml`
   App 第二阶段完整 Meta 模板
+- `overlay/app/Http/Routes/V2/AppRoute.php`
+  V2 App API 路由，挂载 `/api/v2/app/*`
+- `overlay/app/Http/Controllers/V2/App/*`
+  V2 App API 控制器，提供客户端首页、节点、套餐、订单、公告、登录态和诊断接口
 - `platform/`
   Brand Manager / 打包后台，用于品牌配置、manifest、安装包上传、发布记录、强制更新与 `branding.dart` 预览。
   当前本地 `platform/` 仍是未跟踪目录，生产数据不在本地工作区。
@@ -84,6 +89,7 @@ cd /path/to/app-domain-manager-package
 php82 scripts/preflight.php /path/to/v2board-root
 php82 scripts/migrate_app_domain.php /path/to/v2board-root --dry-run
 php82 scripts/migrate_app_domain.php /path/to/v2board-root --apply
+bash install.sh --dry-run /path/to/v2board-root
 bash install.sh /path/to/v2board-root
 ```
 
@@ -91,6 +97,7 @@ bash install.sh /path/to/v2board-root
 
 安装时会：
 - 可选创建 `v2_app_domain_rules` 规则表
+- 输出将覆盖 / 新增 / 不变的文件清单；`--dry-run` 只预览不改文件
 - 备份原文件到目标站点下的 `.app-domain-manager-backups/`
 - 覆盖 `overlay/` 中的文件
 - 执行 `view:clear`
@@ -121,7 +128,8 @@ bash verify.sh /path/to/v2board-root \
   https://panel.example.com \
   YOUR_SECURE_PATH \
   YOUR_USER_TOKEN \
-  YOUR_ADMIN_AUTH
+  YOUR_ADMIN_AUTH \
+  YOUR_APP_AUTH
 ```
 
 参数说明：
@@ -130,6 +138,7 @@ bash verify.sh /path/to/v2board-root \
 - 第 3 个参数：后台安全路径
 - 第 4 个参数：可用用户 token
 - 第 5 个参数：后台 `authorization` 值，可选
+- 第 6 个参数：App/V2 登录态 `authorization` 值，可选，用于验证 `/api/v2/app/client/config` 和节点 manifest
 
 如果要验证“普通订阅保留原 host，App 订阅改成 App 入口域名”：
 
@@ -187,6 +196,22 @@ php82 scripts/scenario_verify.php /path/to/v2board-root app-edge.example.com
 - `GET /api/v1/client/app/getVersion?token=...`
 - `GET /api/v1/client/custom_app/subscribe?token=...`
 - `GET /api/v1/client/custom_app/subscribe?token=...&flag=app_meta`
+- `GET /api/v2/app/bootstrap`
+- `GET /api/v2/app/capabilities`
+- `GET /api/v2/app/client/version`
+- `GET /api/v2/app/client/debug`
+- `GET /api/v2/app/disaster-recovery`
+- `POST /api/v2/app/auth/login`
+- `POST /api/v2/app/auth/register`
+- `GET /api/v2/app/auth/session`
+- `GET /api/v2/app/client/config`
+- `GET /api/v2/app/user/info`
+- `GET /api/v2/app/nodes/manifest`
+- `GET /api/v2/app/nodes/list`
+- `GET /api/v2/app/plans`
+- `GET /api/v2/app/notices`
+- `GET /api/v2/app/orders`
+- `POST /api/v2/app/diagnostics/report`
 
 推荐联调顺序：
 1. 客户端登录后先请求 `bootstrap`
@@ -194,6 +219,7 @@ php82 scripts/scenario_verify.php /path/to/v2board-root app-edge.example.com
 3. 用 `subscribe_url` 拉取 App 专用订阅
 4. 用 `getConfig` 拉取 App 专用 Clash 配置
 5. 核心和首阶段 profile 可用后，再请求 `flag=app_meta` 获取完整 Meta 配置
+6. 新客户端优先使用 `/api/v2/app/*` 获取首页能力、节点 manifest、套餐订单和公告；老客户端继续走 V1 App 接口
 
 ## 二阶段完整订阅说明
 

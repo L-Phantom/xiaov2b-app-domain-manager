@@ -10,6 +10,13 @@ app/Http/Controllers/V1/Admin/Server/AppDomainController.php
 app/Http/Controllers/V1/Client/AppController.php
 app/Http/Controllers/V1/Client/ClientController.php
 app/Http/Controllers/V2/App/AppController.php
+app/Http/Controllers/V2/App/AuthController.php
+app/Http/Controllers/V2/App/BaseController.php
+app/Http/Controllers/V2/App/NodeController.php
+app/Http/Controllers/V2/App/NoticeController.php
+app/Http/Controllers/V2/App/OrderController.php
+app/Http/Controllers/V2/App/PlanController.php
+app/Http/Controllers/V2/App/UserController.php
 app/Http/Kernel.php
 app/Http/Middleware/AppUser.php
 app/Models/AppDomainBinding.php
@@ -25,6 +32,7 @@ app/Http/Requests/Admin/ServerTrojanUpdate.php
 app/Http/Requests/Admin/ServerVmessUpdate.php
 app/Http/Routes/V1/AdminRoute.php
 app/Http/Routes/V1/ClientRoute.php
+app/Http/Routes/V2/AppRoute.php
 app/Services/AppDomainService.php
 app/Services/AppClientProfileService.php
 app/Services/ServerService.php

@@ -2,14 +2,37 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-TARGET_DIR="${1:-}"
+TARGET_DIR=""
+DRY_RUN=0
 MANIFEST_FILE="$ROOT_DIR/manifest.txt"
 OVERLAY_DIR="$ROOT_DIR/overlay"
+
+for arg in "$@"; do
+  case "$arg" in
+    --dry-run)
+      DRY_RUN=1
+      ;;
+    --help|-h)
+      echo "Usage: bash install.sh [--dry-run] /path/to/v2board-root"
+      exit 0
+      ;;
+    *)
+      if [ -z "$TARGET_DIR" ]; then
+        TARGET_DIR="$arg"
+      else
+        echo "Unknown argument: $arg" >&2
+        echo "Usage: bash install.sh [--dry-run] /path/to/v2board-root" >&2
+        exit 1
+      fi
+      ;;
+  esac
+done
+
 if [ -z "$TARGET_DIR" ]; then
   if [ -f "$(pwd)/artisan" ]; then
     TARGET_DIR="$(pwd)"
   else
-    echo "Usage: bash install.sh /path/to/v2board-root" >&2
+    echo "Usage: bash install.sh [--dry-run] /path/to/v2board-root" >&2
     exit 1
   fi
 fi
@@ -32,6 +55,54 @@ fi
 if [ ! -f "$MANIFEST_FILE" ]; then
   echo "manifest.txt missing" >&2
   exit 1
+fi
+
+echo "App Domain Manager install plan"
+echo "Target: $TARGET_DIR"
+echo "Manifest: $MANIFEST_FILE"
+if [ "$DRY_RUN" = "1" ]; then
+  echo "Mode: dry-run (no files will be changed)"
+else
+  echo "Mode: apply"
+  echo "Backup: $BACKUP_DIR"
+fi
+echo
+
+total_count=0
+overwrite_count=0
+create_count=0
+same_count=0
+
+while IFS= read -r rel_path; do
+  [ -n "$rel_path" ] || continue
+  src="$OVERLAY_DIR/$rel_path"
+  dst="$TARGET_DIR/$rel_path"
+
+  if [ ! -f "$src" ]; then
+    echo "Overlay file missing: $src" >&2
+    exit 1
+  fi
+
+  total_count=$((total_count + 1))
+  if [ -e "$dst" ]; then
+    if cmp -s "$src" "$dst"; then
+      same_count=$((same_count + 1))
+      printf '  %-9s %s\n' "same" "$rel_path"
+    else
+      overwrite_count=$((overwrite_count + 1))
+      printf '  %-9s %s\n' "overwrite" "$rel_path"
+    fi
+  else
+    create_count=$((create_count + 1))
+    printf '  %-9s %s\n' "create" "$rel_path"
+  fi
+done < "$MANIFEST_FILE"
+
+echo
+echo "Summary: total=$total_count overwrite=$overwrite_count create=$create_count same=$same_count"
+if [ "$DRY_RUN" = "1" ]; then
+  echo "Dry-run finished. Re-run without --dry-run to apply."
+  exit 0
 fi
 
 mkdir -p "$BACKUP_DIR"
@@ -109,3 +180,4 @@ fi
 echo "Installed successfully."
 echo "Target: $TARGET_DIR"
 echo "Backup: $BACKUP_DIR"
+echo "Rollback: bash $ROOT_DIR/uninstall.sh $TARGET_DIR $BACKUP_DIR"

@@ -18,6 +18,12 @@ This repository should keep App-specific behavior isolated to a small overlay se
   - `overlay/app/Services/ServerService.php`
   - `overlay/app/Utils/Helper.php`
   - admin-facing App domain management overlay files
+- V2 App API compatibility files under:
+  - `overlay/app/Http/Routes/V2/AppRoute.php`
+  - `overlay/app/Http/Controllers/V2/App/*Controller.php`
+  - `overlay/app/Http/Middleware/AppUser.php`
+  - `overlay/app/Services/AppClientProfileService.php`
+  - `overlay/app/Http/Kernel.php` for the `app.user` middleware alias
 - node visibility / node domain replacement files under:
   - `overlay/app/Http/Controllers/V1/Admin/Server/*Controller.php`
   - `overlay/app/Http/Requests/Admin/Server*Update.php`
@@ -112,6 +118,10 @@ This means panel upgrades do not have to preserve App-specific full-meta logic f
 - `app/getVersion`
 - `app/bootstrap`
 - `custom_app/subscribe?flag=app_meta`
+- `/api/v2/app/bootstrap`
+- `/api/v2/app/capabilities`
+- `/api/v2/app/client/config` when an App auth token is available
+- `/api/v2/app/nodes/manifest` when an App auth token is available
 - admin `server/app-domain/fetch`
 - admin `server/app-domain/save`
 - admin `server/app-domain/config`
@@ -133,6 +143,15 @@ This means panel upgrades do not have to preserve App-specific full-meta logic f
 - Add checksum / diff summary for every overlay file before install
 - Make admin secret fields write-only or masked by default so existing secrets are not exposed or accidentally overwritten
 - Add package backend deployment notes if `platform/` becomes part of the production source of truth
+
+## V2 App API Surface
+
+- The package now carries the V2 App route and controller surface that previously existed on the test platform but was not fully tracked in the overlay package.
+- `AppRoute.php` is required for `/api/v2/app/*`; without it, copying `V2/App/AppController.php` alone is not enough.
+- The `app.user` middleware alias in `Kernel.php` is required for authenticated V2 endpoints such as `/api/v2/app/client/config`, `/api/v2/app/user/info`, `/api/v2/app/nodes/manifest`, and orders.
+- Public V2 endpoints include bootstrap, capabilities, client version/debug, disaster recovery, notices, plans, and auth login/register/email-code.
+- Authenticated V2 endpoints include session/logout, client config, user info, node manifest/list, orders, and diagnostics report.
+- `preflight.php` and `verify.sh` should continue to check this surface whenever V2 App API files change.
 
 ## Admin Asset Cache Strategy
 
