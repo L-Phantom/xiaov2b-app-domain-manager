@@ -171,15 +171,16 @@
       ".adm-node-chip{display:inline-flex;align-items:center;max-width:210px;height:24px;padding:0 8px;border-radius:4px;background:#f4f6f9;color:#626c7c;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}",
       ".adm-node-toggle{height:24px;border:0;background:transparent;color:#1890ff;padding:0 2px;font-size:12px;cursor:pointer;}",
       ".adm-node-toggle:hover{color:#096dd9;text-decoration:underline;}",
-      ".adm-node-detail{width:100%;max-width:760px;border:1px solid #edf0f5;background:#fbfcfe;border-radius:4px;margin-top:2px;}",
-      ".adm-node-detail-head{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 10px;border-bottom:1px solid #edf0f5;color:#606a7a;font-size:12px;}",
+      ".adm-rule-detail-row td{background:#fbfcfe;padding:0 20px 18px 132px!important;vertical-align:top!important;}",
+      ".adm-node-detail{width:100%;border:1px solid #edf0f5;background:#fff;border-radius:4px;}",
+      ".adm-node-detail-head{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 12px;border-bottom:1px solid #edf0f5;color:#606a7a;font-size:12px;}",
       ".adm-node-detail-body{display:flex;flex-direction:column;}",
-      ".adm-node-map{display:grid;grid-template-columns:minmax(140px,1fr) minmax(170px,1.2fr) 24px minmax(170px,1.2fr);gap:8px;align-items:center;padding:9px 10px;border-bottom:1px solid #f0f2f5;font-size:12px;color:#5f6978;}",
+      ".adm-node-map{display:grid;grid-template-columns:minmax(160px,1fr) minmax(220px,1.2fr) 28px minmax(220px,1.2fr);gap:10px;align-items:center;padding:10px 12px;border-bottom:1px solid #f0f2f5;font-size:12px;color:#5f6978;}",
       ".adm-node-map:last-child{border-bottom:0;}",
       ".adm-node-map-name{font-weight:500;color:#3f4652;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}",
       ".adm-node-map-code{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#606a7a;background:#fff;border:1px solid #eef1f5;border-radius:4px;padding:4px 6px;}",
       ".adm-node-map-arrow{text-align:center;color:#a0a8b5;font-size:12px;}",
-      ".adm-node-detail-edit{height:24px;padding:0 6px;font-size:12px;}",
+      ".adm-node-detail-edit{height:26px;padding:0 8px;font-size:12px;}",
       ".adm-badge{display:inline-flex;align-items:center;height:22px;padding:0 8px;border-radius:4px;font-size:12px;background:#eef2ff;color:#3150b7;white-space:nowrap;}",
       ".adm-badge.gray{background:#f1f3f5;color:#596273}.adm-badge.green{background:#e9f8ef;color:#137447}.adm-badge.red{background:#fff1f0;color:#b42318}",
       ".adm-tags{display:flex;gap:6px;flex-wrap:wrap;max-width:360px;}",
@@ -366,7 +367,7 @@
   function nodeDetail(rule, mappings) {
     if (!mappings.length) return "";
     return '<div class="adm-node-detail">' +
-      '<div class="adm-node-detail-head"><span>入口映射预览</span><button class="adm-btn adm-btn-text adm-node-detail-edit" type="button" data-rule-edit-inline="' + escapeHtml(rule.id) + '">' + icon("pencil") + '编辑</button></div>' +
+      '<div class="adm-node-detail-head"><span>入口映射预览</span><div class="adm-actions"><button class="adm-node-toggle" type="button" data-rule-collapse="' + escapeHtml(rule.id) + '">收起</button><button class="adm-btn adm-btn-text adm-node-detail-edit" type="button" data-rule-edit-inline="' + escapeHtml(rule.id) + '">' + icon("pencil") + '编辑</button></div></div>' +
       '<div class="adm-node-detail-body">' + mappings.map(function (item) {
         return '<div class="adm-node-map">' +
           '<div class="adm-node-map-name" title="' + escapeHtml(item.name) + '">' + escapeHtml(item.name) + '</div>' +
@@ -381,21 +382,19 @@
     var options = state.options || {};
     var mappings = nodeMappings(rule);
     var labels = mappings.map(function (item) { return item.label; });
-    var expanded = !!state.expandedRules[String(rule.id)];
-    var visible = expanded ? [] : labels.slice(0, 3);
+    var visible = labels.slice(0, 3);
     var remain = Math.max(labels.length - visible.length, 0);
     var nodes = labels.length
-      ? (expanded ? nodeDetail(rule, mappings) : '<div class="adm-node-preview">' + visible.map(function (label) {
+      ? '<div class="adm-node-preview">' + visible.map(function (label) {
           return '<span class="adm-node-chip" title="' + escapeHtml(label) + '">' + escapeHtml(label) + '</span>';
         }).join("") + (remain > 0
           ? '<button class="adm-node-toggle" type="button" data-rule-expand="' + escapeHtml(rule.id) + '">展开 ' + remain + ' 个</button>'
-          : '') + '</div>')
+          : (labels.length ? '<button class="adm-node-toggle" type="button" data-rule-expand="' + escapeHtml(rule.id) + '">查看映射</button>' : '')) + '</div>'
       : '<div class="adm-node-preview">' + tag("节点 未绑定", "gray") + '</div>';
     return '<div class="adm-scope-cell">' +
       '<div class="adm-scope-line">' +
         tag("组 " + selectedText(rule.user_group_ids, options.user_groups), "gray") +
         tag("套餐 " + selectedText(rule.plan_ids, options.plans), "gray") +
-        (expanded && labels.length > 0 ? '<button class="adm-node-toggle" type="button" data-rule-collapse="' + escapeHtml(rule.id) + '">收起</button>' : '') +
       '</div>' +
       nodes +
       '</div>';
@@ -451,7 +450,8 @@
       return '<tr><td colspan="7"><div class="adm-empty">暂无规则</div></td></tr>';
     }
     return rules.map(function (rule, index) {
-      return '<tr data-rule-id="' + escapeHtml(rule.id) + '">' +
+      var expanded = !!state.expandedRules[String(rule.id)];
+      var row = '<tr data-rule-id="' + escapeHtml(rule.id) + '">' +
         '<td>' + escapeHtml(rule.sort || index + 1) + '</td>' +
         '<td><div class="adm-rule-name">' + escapeHtml(rule.name) + '</div>' + (rule.remark ? '<div class="adm-rule-remark">' + escapeHtml(rule.remark) + '</div>' : '') + '</td>' +
         '<td><div class="adm-switch-line">' + switchHtml("adm_rule_enable_" + rule.id, rule.enable) + '<span class="adm-status">' + (rule.enable ? "开启" : "关闭") + '</span></div></td>' +
@@ -460,6 +460,10 @@
         '<td>' + tag((rule.bindings || []).length + " 个节点", "green") + '</td>' +
         '<td><button class="adm-btn adm-rule-edit">' + icon("pencil") + '编辑</button> <button class="adm-btn adm-btn-danger adm-rule-drop">' + icon("trash") + '删除</button></td>' +
       '</tr>';
+      if (expanded) {
+        row += '<tr class="adm-rule-detail-row" data-rule-detail-id="' + escapeHtml(rule.id) + '"><td colspan="7">' + nodeDetail(rule, nodeMappings(rule)) + '</td></tr>';
+      }
+      return row;
     }).join("");
   }
 
