@@ -171,6 +171,15 @@
       ".adm-node-chip{display:inline-flex;align-items:center;max-width:210px;height:24px;padding:0 8px;border-radius:4px;background:#f4f6f9;color:#626c7c;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}",
       ".adm-node-toggle{height:24px;border:0;background:transparent;color:#1890ff;padding:0 2px;font-size:12px;cursor:pointer;}",
       ".adm-node-toggle:hover{color:#096dd9;text-decoration:underline;}",
+      ".adm-node-detail{width:100%;max-width:760px;border:1px solid #edf0f5;background:#fbfcfe;border-radius:4px;margin-top:2px;}",
+      ".adm-node-detail-head{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 10px;border-bottom:1px solid #edf0f5;color:#606a7a;font-size:12px;}",
+      ".adm-node-detail-body{display:flex;flex-direction:column;}",
+      ".adm-node-map{display:grid;grid-template-columns:minmax(140px,1fr) minmax(170px,1.2fr) 24px minmax(170px,1.2fr);gap:8px;align-items:center;padding:9px 10px;border-bottom:1px solid #f0f2f5;font-size:12px;color:#5f6978;}",
+      ".adm-node-map:last-child{border-bottom:0;}",
+      ".adm-node-map-name{font-weight:500;color:#3f4652;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}",
+      ".adm-node-map-code{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#606a7a;background:#fff;border:1px solid #eef1f5;border-radius:4px;padding:4px 6px;}",
+      ".adm-node-map-arrow{text-align:center;color:#a0a8b5;font-size:12px;}",
+      ".adm-node-detail-edit{height:24px;padding:0 6px;font-size:12px;}",
       ".adm-badge{display:inline-flex;align-items:center;height:22px;padding:0 8px;border-radius:4px;font-size:12px;background:#eef2ff;color:#3150b7;white-space:nowrap;}",
       ".adm-badge.gray{background:#f1f3f5;color:#596273}.adm-badge.green{background:#e9f8ef;color:#137447}.adm-badge.red{background:#fff1f0;color:#b42318}",
       ".adm-tags{display:flex;gap:6px;flex-wrap:wrap;max-width:360px;}",
@@ -339,23 +348,54 @@
     });
   }
 
+  function nodeMappings(rule) {
+    return (rule.bindings || []).map(function (binding) {
+      var node = findNode(binding.server_type, binding.server_id);
+      var nodeName = node ? node.name : binding.server_id;
+      var origin = endpoint(node ? node.host : "", node ? node.port : "");
+      var target = endpoint(rule.domain, binding.port || (node ? node.port : ""));
+      return {
+        label: binding.server_type + " #" + binding.server_id + " " + nodeName + (binding.port ? ":" + binding.port : ""),
+        name: binding.server_type + " #" + binding.server_id + " " + nodeName,
+        origin: origin,
+        target: target
+      };
+    });
+  }
+
+  function nodeDetail(rule, mappings) {
+    if (!mappings.length) return "";
+    return '<div class="adm-node-detail">' +
+      '<div class="adm-node-detail-head"><span>入口映射预览</span><button class="adm-btn adm-btn-text adm-node-detail-edit" type="button" data-rule-edit-inline="' + escapeHtml(rule.id) + '">' + icon("pencil") + '编辑</button></div>' +
+      '<div class="adm-node-detail-body">' + mappings.map(function (item) {
+        return '<div class="adm-node-map">' +
+          '<div class="adm-node-map-name" title="' + escapeHtml(item.name) + '">' + escapeHtml(item.name) + '</div>' +
+          '<div class="adm-node-map-code" title="' + escapeHtml(item.origin) + '">' + escapeHtml(item.origin || "-") + '</div>' +
+          '<div class="adm-node-map-arrow">=&gt;</div>' +
+          '<div class="adm-node-map-code" title="' + escapeHtml(item.target) + '">' + escapeHtml(item.target || "-") + '</div>' +
+        '</div>';
+      }).join("") + '</div></div>';
+  }
+
   function scopeTags(rule) {
     var options = state.options || {};
-    var labels = nodeLabels(rule);
+    var mappings = nodeMappings(rule);
+    var labels = mappings.map(function (item) { return item.label; });
     var expanded = !!state.expandedRules[String(rule.id)];
-    var visible = expanded ? labels : labels.slice(0, 3);
+    var visible = expanded ? [] : labels.slice(0, 3);
     var remain = Math.max(labels.length - visible.length, 0);
     var nodes = labels.length
-      ? '<div class="adm-node-preview">' + visible.map(function (label) {
+      ? (expanded ? nodeDetail(rule, mappings) : '<div class="adm-node-preview">' + visible.map(function (label) {
           return '<span class="adm-node-chip" title="' + escapeHtml(label) + '">' + escapeHtml(label) + '</span>';
         }).join("") + (remain > 0
           ? '<button class="adm-node-toggle" type="button" data-rule-expand="' + escapeHtml(rule.id) + '">展开 ' + remain + ' 个</button>'
-          : (expanded && labels.length > 3 ? '<button class="adm-node-toggle" type="button" data-rule-collapse="' + escapeHtml(rule.id) + '">收起</button>' : '')) + '</div>'
+          : '') + '</div>')
       : '<div class="adm-node-preview">' + tag("节点 未绑定", "gray") + '</div>';
     return '<div class="adm-scope-cell">' +
       '<div class="adm-scope-line">' +
         tag("组 " + selectedText(rule.user_group_ids, options.user_groups), "gray") +
         tag("套餐 " + selectedText(rule.plan_ids, options.plans), "gray") +
+        (expanded && labels.length > 0 ? '<button class="adm-node-toggle" type="button" data-rule-collapse="' + escapeHtml(rule.id) + '">收起</button>' : '') +
       '</div>' +
       nodes +
       '</div>';
@@ -686,6 +726,16 @@
       button.addEventListener("click", function () {
         delete state.expandedRules[String(button.getAttribute("data-rule-collapse"))];
         refreshRuleTable();
+      });
+    });
+    Array.prototype.slice.call(document.querySelectorAll("[data-rule-edit-inline]")).forEach(function (button) {
+      button.addEventListener("click", function () {
+        var id = Number(button.getAttribute("data-rule-edit-inline"));
+        var rule = state.rules.find(function (item) { return Number(item.id) === id; });
+        if (rule) {
+          state.modalRule = normalizeRule(rule);
+          renderPage();
+        }
       });
     });
   }
