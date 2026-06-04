@@ -56,6 +56,8 @@
   做 manifest / PHP / JS / shell 检查，生成补丁包 tar.gz 和 SHA256
 - `scripts/fresh_upstream_drill.sh`
   拉取原版 upstream 到临时目录，做补丁包结构验证和安装 dry-run / apply 演练
+- `PRODUCTION_RUNBOOK.md`
+  生产平台升级、验证、回滚和故障判断步骤
 - `sql/app_domain_rules.sql`
   App 域名分发规则表 SQL
 - `overlay/resources/rules/app.meta.clash.yaml`
@@ -313,6 +315,9 @@ bash scripts/fresh_upstream_drill.sh
 
 原生化重构路线见：
 - `NATIVE_REFACTOR_PLAN.md`
+
+生产升级步骤见：
+- `PRODUCTION_RUNBOOK.md`
 
 推荐流程：
 
