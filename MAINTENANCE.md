@@ -133,6 +133,15 @@ This means panel upgrades do not have to preserve App-specific full-meta logic f
 - when `app_domain_rule_enable=1`, unmatched nodes keep their original host instead of falling back to the global replacement host
 - normal web subscription keeps original behavior and does not use the App-only template
 
+## Phase 5 Release Engineering
+
+- Use `bash install.sh --dry-run /path/to/site` before every apply. The dry-run prints create/overwrite/same status plus source and target SHA256 for every manifest file.
+- Every apply writes `.app-domain-manager-backups/<timestamp>/state.tsv` and `install-summary.tsv`.
+- Use the exact rollback command printed by `install.sh`; do not guess the backup timestamp during production work.
+- Use `bash scripts/package_release.sh` to produce the reusable overlay tarball. The package excludes untracked `platform/` by design and includes `MANIFEST-SHA256.txt`, `ROOT-SHA256.txt`, and a tarball `.sha256`.
+- GitHub Actions workflow `Package Overlay` runs static validation and uploads the release tarball plus SHA256 on push/PR/manual dispatch.
+- Use `bash scripts/fresh_upstream_drill.sh` to verify the package can install structurally on a fresh upstream checkout. Full runtime/database/HTTP verification still belongs on the test platform or a drill copy with vendor and DB configured.
+
 ## Future Hardening
 
 - Mirror remote rule providers to your own domain instead of direct GitHub URLs

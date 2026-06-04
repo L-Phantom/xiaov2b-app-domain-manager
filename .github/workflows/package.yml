@@ -1,0 +1,36 @@
+name: Package Overlay
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  package:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          coverage: none
+
+      - name: Package and validate overlay
+        run: bash scripts/package_release.sh
+
+      - name: Upload package
+        uses: actions/upload-artifact@v4
+        with:
+          name: xiaov2b-app-domain-manager-package
+          path: |
+            dist/*.tar.gz
+            dist/*.tar.gz.sha256

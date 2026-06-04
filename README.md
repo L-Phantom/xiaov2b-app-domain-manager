@@ -52,6 +52,10 @@
   检查目标站点、PHP 能力、规则表和节点字段状态
 - `scripts/migrate_app_domain.php`
   创建 App 域名规则表，默认 dry-run，明确传 `--apply` 才执行
+- `scripts/package_release.sh`
+  做 manifest / PHP / JS / shell 检查，生成补丁包 tar.gz 和 SHA256
+- `scripts/fresh_upstream_drill.sh`
+  拉取原版 upstream 到临时目录，做补丁包结构验证和安装 dry-run / apply 演练
 - `sql/app_domain_rules.sql`
   App 域名分发规则表 SQL
 - `overlay/resources/rules/app.meta.clash.yaml`
@@ -97,8 +101,9 @@ bash install.sh /path/to/v2board-root
 
 安装时会：
 - 可选创建 `v2_app_domain_rules` 规则表
-- 输出将覆盖 / 新增 / 不变的文件清单；`--dry-run` 只预览不改文件
+- 输出将覆盖 / 新增 / 不变的文件清单、源文件 SHA256、目标文件 SHA256；`--dry-run` 只预览不改文件
 - 备份原文件到目标站点下的 `.app-domain-manager-backups/`
+- 写入 `install-summary.tsv`，用于复盘本次覆盖范围和 checksum
 - 覆盖 `overlay/` 中的文件
 - 执行 `view:clear`
 - 执行 `config:clear` 与 `config:cache`
@@ -112,6 +117,12 @@ bash uninstall.sh /path/to/v2board-root
 ```
 
 默认回滚最近一次安装生成的备份。
+
+安装完成后终端会打印精确回滚命令，例如：
+
+```bash
+bash uninstall.sh /path/to/v2board-root /path/to/v2board-root/.app-domain-manager-backups/20260604-120000
+```
 
 ## 验证
 
@@ -153,6 +164,62 @@ php82 scripts/scenario_verify.php /path/to/v2board-root app-edge.example.com
 - 如果规则表存在，会在事务里临时创建规则，验证规则匹配优先级
 - 输出普通节点样本与 App 节点样本
 - 最后自动回滚，不写入数据库
+
+## 生成发布补丁包
+
+本地生成标准 tar.gz：
+
+```bash
+bash scripts/package_release.sh
+```
+
+产物位于：
+
+```bash
+dist/xiaov2b-app-domain-manager-<commit>-<timestamp>.tar.gz
+dist/xiaov2b-app-domain-manager-<commit>-<timestamp>.tar.gz.sha256
+```
+
+包内包含：
+- overlay 文件
+- installer / uninstaller / verifier
+- migration / preflight / scenario scripts
+- `MANIFEST-SHA256.txt`
+- `ROOT-SHA256.txt`
+
+`platform/` 打包后台仍然不会进入这个补丁包，避免把本地 Brand Manager 数据或运行态混进后端 overlay。
+
+GitHub Actions 会在 `main` push、PR 和手动触发时自动跑 `Package Overlay`，并上传同样的 tar.gz + SHA256 artifact。
+
+## 原版环境安装演练
+
+只做结构层面的 fresh upstream drill：
+
+```bash
+bash scripts/fresh_upstream_drill.sh
+```
+
+默认会拉取：
+
+```bash
+https://github.com/wyx2685/v2board.git
+```
+
+默认基线：
+
+```bash
+e384825b
+```
+
+可以覆盖：
+
+```bash
+UPSTREAM_URL=git@github.com:xxx/xiaov2b.git \
+UPSTREAM_REF=main \
+bash scripts/fresh_upstream_drill.sh
+```
+
+注意：fresh checkout 通常没有 `vendor/` 和数据库配置，因此这个脚本会完成 overlay 安装结构验证；完整 runtime、migration、HTTP 验证仍需在测试平台或带数据库的 drill 站点上执行。
 
 ## App 域名规则 API
 
