@@ -24,6 +24,16 @@ $kernel->bootstrap();
 $schema = Illuminate\Support\Facades\Schema::getFacadeRoot();
 $db = Illuminate\Support\Facades\DB::connection();
 $actions = [];
+$serverTables = [
+    'v2_server_shadowsocks',
+    'v2_server_vmess',
+    'v2_server_trojan',
+    'v2_server_vless',
+    'v2_server_hysteria',
+    'v2_server_tuic',
+    'v2_server_anytls',
+    'v2_server_v2node',
+];
 
 if (!$schema->hasTable('v2_app_domain_rules')) {
     $actions[] = 'create table v2_app_domain_rules';
@@ -56,6 +66,33 @@ if (!$schema->hasTable('v2_app_domain_bindings')) {
     }
 }
 
+$serverColumnStatus = [];
+foreach ($serverTables as $table) {
+    if (!$schema->hasTable($table)) {
+        $serverColumnStatus[$table] = [
+            'table_exists' => false,
+            'app_show' => false,
+            'app_domain_replace' => false,
+        ];
+        continue;
+    }
+
+    foreach (['app_show', 'app_domain_replace'] as $column) {
+        if (!$schema->hasColumn($table, $column)) {
+            $actions[] = "add column {$table}.{$column}";
+            if ($mode === '--apply') {
+                $db->statement("ALTER TABLE `{$table}` ADD COLUMN `{$column}` tinyint(1) NOT NULL DEFAULT 1");
+            }
+        }
+    }
+
+    $serverColumnStatus[$table] = [
+        'table_exists' => true,
+        'app_show' => $schema->hasColumn($table, 'app_show') || ($mode === '--apply' && in_array("add column {$table}.app_show", $actions, true)),
+        'app_domain_replace' => $schema->hasColumn($table, 'app_domain_replace') || ($mode === '--apply' && in_array("add column {$table}.app_domain_replace", $actions, true)),
+    ];
+}
+
 $result = [
     'mode' => $mode,
     'target' => $target,
@@ -64,6 +101,7 @@ $result = [
     'app_domain_rules_has_port' => $schema->hasTable('v2_app_domain_rules') ? $schema->hasColumn('v2_app_domain_rules', 'port') || ($mode === '--apply' && in_array('add column v2_app_domain_rules.port', $actions, true)) : false,
     'app_domain_groups_table_exists' => $schema->hasTable('v2_app_domain_groups') || ($mode === '--apply' && in_array('create table v2_app_domain_groups', $actions, true)),
     'app_domain_bindings_table_exists' => $schema->hasTable('v2_app_domain_bindings') || ($mode === '--apply' && in_array('create table v2_app_domain_bindings', $actions, true)),
+    'server_columns' => $serverColumnStatus,
 ];
 
 echo json_encode($result, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) . PHP_EOL;

@@ -105,6 +105,7 @@ bash install.sh /path/to/v2board-root
 
 安装时会：
 - 可选创建 `v2_app_domain_rules` 规则表
+- 可选补齐节点表 `app_show` 与 `app_domain_replace` 字段
 - 输出将覆盖 / 新增 / 不变的文件清单、源文件 SHA256、目标文件 SHA256；`--dry-run` 只预览不改文件
 - 备份原文件到目标站点下的 `.app-domain-manager-backups/`
 - 写入 `install-summary.tsv`，用于复盘本次覆盖范围和 checksum
