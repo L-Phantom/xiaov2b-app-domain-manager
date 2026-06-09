@@ -9,6 +9,7 @@ app/Http/Controllers/V1/Admin/Server/VmessController.php
 app/Http/Controllers/V1/Admin/Server/AppDomainController.php
 app/Http/Controllers/V1/Client/AppController.php
 app/Http/Controllers/V1/Client/ClientController.php
+app/Http/Controllers/V1/User/OrderController.php
 app/Http/Controllers/V2/App/AppController.php
 app/Http/Controllers/V2/App/AuthController.php
 app/Http/Controllers/V2/App/BaseController.php
@@ -35,6 +36,7 @@ app/Http/Routes/V1/ClientRoute.php
 app/Http/Routes/V2/AppRoute.php
 app/Services/AppDomainService.php
 app/Services/AppClientProfileService.php
+app/Services/PaymentService.php
 app/Services/ServerService.php
 app/Utils/Helper.php
 public/assets/admin/umi.js

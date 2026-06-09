@@ -66,6 +66,8 @@
   V2 App API 路由，挂载 `/api/v2/app/*`
 - `overlay/app/Http/Controllers/V2/App/*`
   V2 App API 控制器，提供客户端首页、节点、套餐、订单、公告、登录态和诊断接口
+- `overlay/app/Http/Controllers/V1/User/OrderController.php` 与 `overlay/app/Services/PaymentService.php`
+  生产站 EZ 主题支付回调/下单覆盖文件，随本补丁一同安装，避免 xiaov2b 升级后再二次手动替换
 - `platform/`
   Brand Manager / 打包后台，用于品牌配置、manifest、安装包上传、发布记录、强制更新与 `branding.dart` 预览。
   当前本地 `platform/` 仍是未跟踪目录，生产数据不在本地工作区。
@@ -107,6 +109,7 @@ bash install.sh /path/to/v2board-root
 - 备份原文件到目标站点下的 `.app-domain-manager-backups/`
 - 写入 `install-summary.tsv`，用于复盘本次覆盖范围和 checksum
 - 覆盖 `overlay/` 中的文件
+- 同步覆盖 EZ 主题支付相关的 `V1/User/OrderController.php` 和 `PaymentService.php`
 - 执行 `view:clear`
 - 执行 `config:clear` 与 `config:cache`
 - 如果检测到 Webman，优先执行完整 `stop/start`，必要时才回退到进程 reload
