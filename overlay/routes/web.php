@@ -81,6 +81,7 @@ if (!empty(config('v2board.subscribe_path'))) {
     Route::get(config('v2board.subscribe_path'), 'V1\\Client\\ClientController@subscribe')->middleware('client');
 }
 
-if (!empty(config('v2board.app_domain_subscribe_path'))) {
-    Route::get(config('v2board.app_domain_subscribe_path'), 'V1\\Client\\ClientController@subscribeForApp')->middleware('client');
+$appDomainSubscribePath = config('v2board.app_domain_subscribe_path', '/api/v1/client/custom_app/subscribe');
+if (!empty($appDomainSubscribePath)) {
+    Route::get($appDomainSubscribePath, 'V1\\Client\\ClientController@subscribeForApp')->middleware('client');
 }
