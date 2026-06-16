@@ -101,7 +101,8 @@
       ".smm-stat-label{font-size:12px;color:#7b8494;margin-bottom:8px;}",
       ".smm-stat-value{font-size:26px;line-height:1;color:#202938;font-weight:600;}",
       ".smm-stat-foot{font-size:12px;color:#8a93a3;margin-top:9px;}",
-      ".smm-card-head{height:48px;padding:0 20px;border-bottom:1px solid #eef0f4;display:flex;align-items:center;justify-content:space-between;gap:10px;}",
+      ".smm-card-head{min-height:52px;padding:0 20px;border-bottom:1px solid #eef0f4;display:flex;align-items:center;justify-content:space-between;gap:12px;}",
+      ".smm-card-head-main{min-width:0;}",
       ".smm-card-title{font-size:14px;font-weight:600;color:#2f3542;}",
       ".smm-card-body{padding:0;}",
       ".smm-cache-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px;margin-top:16px;}",
@@ -123,14 +124,18 @@
       ".smm-mini-row:last-child{border-bottom:0}",
       ".smm-main-text{font-size:13px;color:#2f3542;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}",
       ".smm-sub-text{font-size:12px;color:#8a93a3;margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}",
-      ".smm-queue-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;margin-top:16px;}",
-      ".smm-queue-tabs{display:flex;align-items:center;gap:6px;flex-wrap:wrap;}",
+      ".smm-queue-card{margin-top:16px;}",
+      ".smm-queue-head{padding-top:10px;padding-bottom:10px;}",
+      ".smm-queue-tabs{display:flex;align-items:center;gap:6px;flex-wrap:wrap;justify-content:flex-end;}",
       ".smm-queue-tab{height:30px;border:1px solid #d8dde8;background:#fff;border-radius:4px;padding:0 10px;font-size:13px;color:#566070;cursor:pointer;}",
       ".smm-queue-tab.active{background:#eef2ff;border-color:#b8c5ff;color:#3150b7;font-weight:600;}",
-      ".smm-queue-table{width:100%;border-collapse:collapse;background:#fff;}",
-      ".smm-queue-table th{height:38px;background:#f8f9fc;color:#566070;font-size:12px;font-weight:600;text-align:left;padding:0 12px;border-bottom:1px solid #eef0f4;white-space:nowrap;}",
-      ".smm-queue-table td{font-size:13px;color:#2f3542;padding:10px 12px;border-bottom:1px solid #f0f2f5;vertical-align:middle;}",
+      ".smm-queue-subhead{min-height:46px;padding:0 20px;border-bottom:1px solid #eef0f4;display:flex;align-items:center;justify-content:space-between;gap:12px;}",
+      ".smm-queue-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end;}",
+      ".smm-queue-table{width:100%;border-collapse:collapse;background:#fff;min-width:1180px;}",
+      ".smm-queue-table th{height:42px;background:#f8f9fc;color:#566070;font-size:12px;font-weight:600;text-align:left;padding:0 12px;border-bottom:1px solid #eef0f4;white-space:nowrap;}",
+      ".smm-queue-table td{font-size:13px;color:#2f3542;padding:11px 12px;border-bottom:1px solid #f0f2f5;vertical-align:middle;}",
       ".smm-queue-table tr:last-child td{border-bottom:0;}",
+      ".smm-table-actions{display:flex;align-items:center;gap:6px;flex-wrap:wrap;}",
       ".smm-pill{display:inline-flex;align-items:center;height:22px;border-radius:4px;background:#eef2ff;color:#3150b7;padding:0 8px;font-size:12px;white-space:nowrap;}",
       ".smm-risk{display:inline-flex;align-items:center;height:24px;border-radius:4px;padding:0 8px;font-size:12px;font-weight:600;white-space:nowrap;}",
       ".smm-risk.safe{background:#e9f8ef;color:#137447}.smm-risk.mid{background:#fff7e6;color:#ad6800}.smm-risk.high{background:#fff1f0;color:#b42318}.smm-risk.critical{background:#3a0d12;color:#fff}",
@@ -142,6 +147,8 @@
       ".smm-table th{height:42px;background:#f8f9fc;color:#566070;font-size:12px;font-weight:600;text-align:left;padding:0 12px;border-bottom:1px solid #eef0f4;white-space:nowrap;}",
       ".smm-table td{font-size:13px;color:#2f3542;padding:11px 12px;border-bottom:1px solid #f0f2f5;vertical-align:middle;}",
       ".smm-table tr:last-child td{border-bottom:0;}",
+      ".smm-table th:last-child,.smm-table td:last-child,.smm-queue-table th:last-child,.smm-queue-table td:last-child{text-align:right;}",
+      ".smm-table td:last-child .smm-table-actions,.smm-queue-table td:last-child .smm-table-actions{justify-content:flex-end;}",
       ".smm-table tr.is-selected td{background:#fbfcff;}",
       ".smm-code{font-size:12px;color:#596273;background:#f6f8fb;border:1px solid #edf0f5;border-radius:4px;padding:3px 6px;white-space:nowrap;}",
       ".smm-muted{color:#8a93a3;font-size:12px;}",
@@ -197,7 +204,7 @@
       ".smm-rule-actions{display:flex;justify-content:flex-end;gap:8px;padding:0 20px 18px;border-top:1px solid #eef0f4;padding-top:14px;}",
       "@media(min-width:1600px){.smm-page{padding-right:40px}.smm-mini-row{padding-top:12px;padding-bottom:12px}.smm-stat{min-height:108px}}",
       "@media(max-width:1100px){.smm-span-3,.smm-span-4,.smm-span-6,.smm-span-8,.smm-span-12{grid-column:span 12}.smm-rule-field,.smm-rule-field.wide{grid-column:span 6}}",
-      "@media(max-width:900px){.smm-page{padding:0 12px 18px}.smm-grid,.smm-queue-grid,.smm-cache-grid{display:block}.smm-card{margin-bottom:14px}.smm-tools{width:100%}.smm-input,.smm-select{width:100%}.smm-drawer{width:100vw}.smm-rule-panel{padding:10px}.smm-rule-field,.smm-rule-field.wide{grid-column:1/-1}.smm-signal-list,.smm-metric-strip{grid-template-columns:1fr}}"
+      "@media(max-width:900px){.smm-page{padding:0 12px 18px}.smm-grid,.smm-cache-grid{display:block}.smm-card{margin-bottom:14px}.smm-card-head,.smm-queue-subhead{align-items:flex-start;flex-direction:column;padding-top:10px;padding-bottom:10px}.smm-queue-tabs,.smm-queue-actions,.smm-tools{width:100%;justify-content:flex-start}.smm-input,.smm-select{width:100%}.smm-drawer{width:100vw}.smm-rule-panel{padding:10px}.smm-rule-field,.smm-rule-field.wide{grid-column:1/-1}.smm-signal-list,.smm-metric-strip{grid-template-columns:1fr}}"
     ].join("\n");
     document.head.appendChild(style);
   }
@@ -491,7 +498,7 @@
     }
     return [
       "<div class=\"smm-table-wrap\"><table class=\"smm-table\"><thead><tr>",
-      "<th>账号</th><th>风险等级</th><th>主要原因</th><th>订阅 / 流量</th><th>IP / 入口</th><th>处置</th><th>最后拉取</th><th>操作</th>",
+      "<th style=\"width:13%;\">账号</th><th style=\"width:9%;\">风险等级</th><th style=\"width:28%;\">主要原因</th><th style=\"width:14%;\">订阅 / 流量</th><th style=\"width:14%;\">IP / 入口</th><th style=\"width:8%;\">处置</th><th style=\"width:10%;\">最后拉取</th><th style=\"width:4%;\">操作</th>",
       "</tr></thead><tbody>",
       rows.map(function (row) {
         var key = String(row.user_id || "");
@@ -522,7 +529,7 @@
           "<td><div>IP " + escapeHtml(row.ips || 0) + " / 入口 " + escapeHtml(row.hosts || 0) + "</div><div class=\"smm-muted\">" + escapeHtml(listText((geo.countries || []).slice(0, 2))) + " / 客户端 " + escapeHtml(row.agents || 0) + "</div></td>",
           "<td><span class=\"smm-disposition " + dispositionClass(disposition.status) + "\">" + escapeHtml(disposition.label || dispositionLabel(disposition.status)) + "</span></td>",
           "<td><div>" + escapeHtml(formatTime(row.last_seen)) + "</div><div class=\"smm-muted\">首次 " + escapeHtml(formatTime(row.first_seen)) + "</div></td>",
-          "<td><button class=\"smm-btn smm-user-detail\" data-user=\"" + escapeHtml(key) + "\">详情</button></td>",
+          "<td><div class=\"smm-table-actions\"><button class=\"smm-btn smm-user-detail\" data-user=\"" + escapeHtml(key) + "\">详情</button></div></td>",
           "</tr>"
         ].join("");
       }).join(""),
@@ -542,12 +549,13 @@
     rows = rows || [];
     var isReviewQueue = title.indexOf("待复核") >= 0;
     return [
-      "<div class=\"smm-card\">",
-      "<div class=\"smm-card-head\"><div><div class=\"smm-card-title\">" + escapeHtml(title) + "</div><div class=\"smm-muted\">" + (isReviewQueue ? "仅显示手动观察或极危险/高分待复核账号" : "人工建议拉黑账号") + "</div></div><div class=\"smm-tools\"><button class=\"smm-btn smm-bulk-handled\" data-queue=\"" + escapeHtml(title) + "\">批量已处理</button><button class=\"smm-btn smm-bulk-clear\" data-queue=\"" + escapeHtml(title) + "\">批量移出队列</button><div class=\"smm-muted\">" + escapeHtml(rows.length) + " 个账号</div></div></div>",
-      "<div class=\"smm-card-body\">",
+      "<div class=\"smm-queue-subhead\">",
+      "<div class=\"smm-card-head-main\"><div class=\"smm-card-title\">" + escapeHtml(title) + "</div><div class=\"smm-muted\">" + (isReviewQueue ? "仅显示手动观察或极危险 / 高分待复核账号" : "人工建议拉黑账号") + "</div></div>",
+      "<div class=\"smm-queue-actions\"><button class=\"smm-btn smm-bulk-handled\" data-queue=\"" + escapeHtml(title) + "\">批量已处理</button><button class=\"smm-btn smm-bulk-clear\" data-queue=\"" + escapeHtml(title) + "\">批量移出队列</button><div class=\"smm-muted\">" + escapeHtml(rows.length) + " 个账号</div></div>",
+      "</div>",
       rows.length ? [
         "<div class=\"smm-table-wrap\"><table class=\"smm-queue-table\"><thead><tr>",
-        "<th>账号</th><th>风险</th><th>处置</th><th>行为</th><th>最后拉取</th><th>操作</th>",
+        "<th style=\"width:24%;\">账号</th><th style=\"width:14%;\">风险</th><th style=\"width:16%;\">处置</th><th style=\"width:18%;\">行为</th><th style=\"width:14%;\">最后拉取</th><th style=\"width:14%;\">操作</th>",
         "</tr></thead><tbody>",
         rows.slice(0, 12).map(function (row) {
           var disposition = row.disposition || {};
@@ -562,14 +570,12 @@
             "<td><span class=\"smm-disposition " + dispositionClass(disposition.status) + "\">" + escapeHtml(disposition.label || dispositionLabel(disposition.status)) + "</span><div class=\"smm-muted\">" + escapeHtml(ageText) + "</div>" + (overdue.overdue ? "<div class=\"smm-overdue\">超过 " + escapeHtml(overdue.threshold_days || state.filters.watch_overdue_days) + " 天未复核</div>" : "") + "</td>",
             "<td><div>" + escapeHtml(row.total || 0) + " 次</div><div class=\"smm-muted\">IP " + escapeHtml(row.ips || 0) + " / 入口 " + escapeHtml(row.hosts || 0) + "</div></td>",
             "<td>" + escapeHtml(formatTime(row.last_seen)) + "</td>",
-            "<td><button class=\"smm-btn smm-user-detail\" data-user=\"" + escapeHtml(key) + "\">详情</button> <button class=\"smm-btn smm-queue-remove\" data-user=\"" + escapeHtml(key) + "\">移出</button> " + (isReviewQueue ? "<button class=\"smm-btn smm-clear-profile-row\" data-user=\"" + escapeHtml(key) + "\">清除画像</button>" : "") + "</td>",
+            "<td><div class=\"smm-table-actions\"><button class=\"smm-btn smm-user-detail\" data-user=\"" + escapeHtml(key) + "\">详情</button><button class=\"smm-btn smm-queue-remove\" data-user=\"" + escapeHtml(key) + "\">移出</button>" + (isReviewQueue ? "<button class=\"smm-btn smm-clear-profile-row\" data-user=\"" + escapeHtml(key) + "\">清除画像</button>" : "") + "</div></td>",
             "</tr>"
           ].join("");
         }).join(""),
         "</tbody></table></div>"
       ].join("") : "<div class=\"smm-empty\">" + escapeHtml(emptyText || "暂无账号") + "</div>",
-      "</div>",
-      "</div>"
     ].join("");
   }
 
@@ -579,8 +585,8 @@
     var activeRows = state.queueTab === "blacklist" ? blacklistRows : watchRows;
     var activeTitle = state.queueTab === "blacklist" ? "建议拉黑列表" : "待复核列表";
     return [
-      "<div class=\"smm-card\" style=\"margin-top:16px;\">",
-      "<div class=\"smm-card-head\"><div><div class=\"smm-card-title\">人工处置队列</div><div class=\"smm-muted\">中风险和普通高风险不会自动进入待复核列表</div></div><div class=\"smm-queue-tabs\"><button class=\"smm-queue-tab " + (state.queueTab === "watch" ? "active" : "") + "\" data-queue-tab=\"watch\">待复核 " + escapeHtml(watchRows.length) + "</button><button class=\"smm-queue-tab " + (state.queueTab === "blacklist" ? "active" : "") + "\" data-queue-tab=\"blacklist\">建议拉黑 " + escapeHtml(blacklistRows.length) + "</button></div></div>",
+      "<div class=\"smm-card smm-queue-card\">",
+      "<div class=\"smm-card-head smm-queue-head\"><div class=\"smm-card-head-main\"><div class=\"smm-card-title\">人工处置队列</div><div class=\"smm-muted\">中风险和普通高风险不会自动进入待复核列表</div></div><div class=\"smm-queue-tabs\"><button class=\"smm-queue-tab " + (state.queueTab === "watch" ? "active" : "") + "\" data-queue-tab=\"watch\">待复核 " + escapeHtml(watchRows.length) + "</button><button class=\"smm-queue-tab " + (state.queueTab === "blacklist" ? "active" : "") + "\" data-queue-tab=\"blacklist\">建议拉黑 " + escapeHtml(blacklistRows.length) + "</button></div></div>",
       renderDispositionQueue(activeTitle, activeRows, state.queueTab === "blacklist" ? "暂无建议拉黑的账号" : "暂无待复核账号"),
       "</div>"
     ].join("");
