@@ -131,6 +131,7 @@
       ".smm-queue-tab.active{background:#eef2ff;border-color:#b8c5ff;color:#3150b7;font-weight:600;}",
       ".smm-queue-subhead{min-height:46px;padding:0 20px;border-bottom:1px solid #eef0f4;display:flex;align-items:center;justify-content:space-between;gap:12px;}",
       ".smm-queue-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end;}",
+      ".smm-count-pill{display:inline-flex;align-items:center;height:30px;border:1px solid #eef0f4;border-radius:4px;background:#fbfcfe;color:#8a93a3;padding:0 10px;font-size:12px;white-space:nowrap;}",
       ".smm-queue-table{width:100%;border-collapse:collapse;background:#fff;min-width:1180px;}",
       ".smm-queue-table th{height:42px;background:#f8f9fc;color:#566070;font-size:12px;font-weight:600;text-align:left;padding:0 12px;border-bottom:1px solid #eef0f4;white-space:nowrap;}",
       ".smm-queue-table td{font-size:13px;color:#2f3542;padding:11px 12px;border-bottom:1px solid #f0f2f5;vertical-align:middle;}",
@@ -160,6 +161,7 @@
       ".smm-drawer{width:min(760px,calc(100vw - 48px));height:100%;background:#fff;box-shadow:-12px 0 28px rgba(20,32,54,.16);display:flex;flex-direction:column;}",
       ".smm-drawer-head{padding:18px 22px 14px;border-bottom:1px solid #eef0f4;}",
       ".smm-drawer-top{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;}",
+      ".smm-drawer-state{display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end;}",
       ".smm-drawer-title{font-size:16px;font-weight:600;color:#202938;word-break:break-all;}",
       ".smm-drawer-meta{font-size:12px;color:#8a93a3;margin-top:6px;line-height:1.7;}",
       ".smm-drawer-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px;}",
@@ -548,10 +550,13 @@
   function renderDispositionQueue(title, rows, emptyText) {
     rows = rows || [];
     var isReviewQueue = title.indexOf("待复核") >= 0;
+    var actions = rows.length
+      ? "<button class=\"smm-btn smm-bulk-handled\" data-queue=\"" + escapeHtml(title) + "\">批量已处理</button><button class=\"smm-btn smm-bulk-clear\" data-queue=\"" + escapeHtml(title) + "\">批量移出队列</button>"
+      : "";
     return [
       "<div class=\"smm-queue-subhead\">",
       "<div class=\"smm-card-head-main\"><div class=\"smm-card-title\">" + escapeHtml(title) + "</div><div class=\"smm-muted\">" + (isReviewQueue ? "仅显示手动观察或极危险 / 高分待复核账号" : "人工建议拉黑账号") + "</div></div>",
-      "<div class=\"smm-queue-actions\"><button class=\"smm-btn smm-bulk-handled\" data-queue=\"" + escapeHtml(title) + "\">批量已处理</button><button class=\"smm-btn smm-bulk-clear\" data-queue=\"" + escapeHtml(title) + "\">批量移出队列</button><div class=\"smm-muted\">" + escapeHtml(rows.length) + " 个账号</div></div>",
+      "<div class=\"smm-queue-actions\">" + actions + "<div class=\"smm-count-pill\">" + escapeHtml(rows.length) + " 个账号</div></div>",
       "</div>",
       rows.length ? [
         "<div class=\"smm-table-wrap\"><table class=\"smm-queue-table\"><thead><tr>",
@@ -854,8 +859,7 @@
     return [
       "<div class=\"smm-drawer-mask\" id=\"smm-drawer-mask\">",
 	      "<div class=\"smm-drawer\">",
-	      "<div class=\"smm-drawer-head\"><div class=\"smm-drawer-top\"><div><div class=\"smm-drawer-title\">" + escapeHtml(row.email || "-") + "</div><div class=\"smm-drawer-meta\">UID " + escapeHtml(row.user_id || "-") + " / 套餐 " + escapeHtml(row.plan_id || "-") + " / 最近拉取 " + escapeHtml(formatTime(row.last_seen)) + "</div></div><div style=\"display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end;\"><span class=\"smm-risk " + riskClass(row.risk_level) + "\">" + escapeHtml(row.risk_level || "无风险") + " " + escapeHtml(row.risk_score || 0) + "</span><span class=\"smm-disposition " + dispositionClass((row.disposition || {}).status) + "\">" + escapeHtml(((row.disposition || {}).label) || dispositionLabel((row.disposition || {}).status)) + "</span></div></div>",
-	      "<div class=\"smm-drawer-actions\"><button class=\"smm-btn smm-action\" data-action=\"watch\">加入观察</button><button class=\"smm-btn smm-action\" data-action=\"none\">移出观察</button><button class=\"smm-btn smm-action\" data-action=\"handled\">已处理</button><button class=\"smm-btn smm-action\" data-action=\"whitelist\">白名单</button><button class=\"smm-btn smm-action\" data-action=\"freeze_suggested\">建议冻结</button><button class=\"smm-btn smm-btn-danger smm-action\" data-action=\"blacklist_suggested\">建议拉黑</button><button class=\"smm-btn smm-btn-danger smm-clear-profile\">清除行为画像</button><button id=\"smm-drawer-close\" class=\"smm-btn\">关闭</button></div></div>",
+	      "<div class=\"smm-drawer-head\"><div class=\"smm-drawer-top\"><div><div class=\"smm-drawer-title\">" + escapeHtml(row.email || "-") + "</div><div class=\"smm-drawer-meta\">UID " + escapeHtml(row.user_id || "-") + " / 套餐 " + escapeHtml(row.plan_id || "-") + " / 最近拉取 " + escapeHtml(formatTime(row.last_seen)) + "</div></div><div class=\"smm-drawer-state\"><span class=\"smm-risk " + riskClass(row.risk_level) + "\">" + escapeHtml(row.risk_level || "无风险") + " " + escapeHtml(row.risk_score || 0) + "</span><span class=\"smm-disposition " + dispositionClass((row.disposition || {}).status) + "\">" + escapeHtml(((row.disposition || {}).label) || dispositionLabel((row.disposition || {}).status)) + "</span><button id=\"smm-drawer-close\" class=\"smm-btn\">关闭</button></div></div></div>",
 	      row.behavior ? "" : "<div class=\"smm-empty\">当前账号来自全局队列快照。完整拉取明细请在账号风险列表当前页打开，或重新查询定位该账号。</div>",
 	      "<div class=\"smm-drawer-tabs\">" + tabs.map(function (tab) {
         return "<button class=\"smm-tab" + (state.drawerTab === tab[0] ? " active" : "") + "\" data-tab=\"" + escapeHtml(tab[0]) + "\">" + escapeHtml(tab[1]) + "</button>";
