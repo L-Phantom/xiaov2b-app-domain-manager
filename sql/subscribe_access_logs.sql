@@ -22,6 +22,6 @@ CREATE TABLE IF NOT EXISTS `v2_subscribe_access_logs` (
   KEY `idx_user_created` (`user_id`, `created_at`),
   KEY `idx_token_created` (`token_hash`, `created_at`),
   KEY `idx_ip_created` (`client_ip`, `created_at`),
-  KEY `idx_host_created` (`request_host`, `created_at`),
+  KEY `idx_host_created` (`request_host`(191), `created_at`),
   KEY `idx_type_created` (`subscribe_type`, `created_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
