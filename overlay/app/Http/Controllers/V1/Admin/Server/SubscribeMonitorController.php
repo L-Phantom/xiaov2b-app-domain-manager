@@ -66,6 +66,21 @@ class SubscribeMonitorController extends Controller
         ]);
     }
 
+    public function clearProfile(Request $request)
+    {
+        try {
+            $operator = $request->user();
+        } catch (\Throwable $e) {
+            $operator = null;
+        }
+        $userId = (int) $request->input('user_id', 0);
+        $note = (string) $request->input('note', '');
+
+        return response([
+            'data' => (new SubscribeMonitorService())->clearUserProfile($userId, $operator, $note)
+        ]);
+    }
+
     public function dispatchPreview(Request $request)
     {
         $userId = (int) $request->input('user_id', 0);

@@ -271,6 +271,59 @@ class SubscribeMonitorService
         return $this->getDispositionForUser($userId);
     }
 
+    public function clearUserProfile(int $userId, $operator = null, string $note = ''): array
+    {
+        if ($userId <= 0) {
+            abort(500, '用户ID不能为空');
+        }
+
+        $user = class_exists(User::class) ? User::find($userId) : null;
+        $email = $this->limitString($user->email ?? '', 255);
+        $operatorId = $this->nullableInt($this->getUserValue($operator, 'id'));
+        $operatorEmail = $this->limitString($this->getUserValue($operator, 'email'), 255);
+        $note = $this->limitString($note ?: '人工确认后清除行为画像', 1000);
+        $now = time();
+        $deleted = [
+            'access_logs' => 0,
+            'risk_snapshots' => 0,
+            'disposition' => 0,
+        ];
+
+        DB::transaction(function () use ($userId, $email, $operatorId, $operatorEmail, $note, $now, &$deleted) {
+            if ($this->tableExists()) {
+                $deleted['access_logs'] = SubscribeAccessLog::where('user_id', $userId)->delete();
+            }
+            if ($this->snapshotTableExists()) {
+                $deleted['risk_snapshots'] = SubscribeRiskSnapshot::where('user_id', $userId)->delete();
+            }
+            if ($this->dispositionTableExists()) {
+                $deleted['disposition'] = SubscribeDisposition::where('user_id', $userId)->delete();
+            }
+            if ($this->dispositionLogTableExists()) {
+                SubscribeDispositionLog::create([
+                    'user_id' => $userId,
+                    'email' => $email,
+                    'action' => 'clear_profile',
+                    'from_status' => null,
+                    'to_status' => null,
+                    'risk_level' => null,
+                    'risk_score' => null,
+                    'note' => $note,
+                    'operator_id' => $operatorId,
+                    'operator_email' => $operatorEmail,
+                    'created_at' => $now,
+                ]);
+            }
+        });
+
+        return [
+            'user_id' => $userId,
+            'email' => $email,
+            'deleted' => $deleted,
+            'disposition' => $this->emptyDisposition(),
+        ];
+    }
+
     public function getDispositionForUser(int $userId): array
     {
         if ($userId <= 0 || !$this->dispositionTableExists()) {
@@ -654,14 +707,19 @@ class SubscribeMonitorService
 
     protected function watchProfileList(array $profiles): array
     {
-        $manual = array_filter($profiles, function ($profile) {
-            return (($profile['disposition']['status'] ?? 'none') === 'watch');
+        $rules = $this->getRiskRules();
+        $threshold = (int) ($rules['queue']['watch_score'] ?? $rules['levels']['critical'] ?? 80);
+        $manual = array_filter($profiles, function ($profile) use ($threshold) {
+            $status = $profile['disposition']['status'] ?? 'none';
+            if ($status === 'watch') {
+                return true;
+            }
+            if ($status !== 'none') {
+                return false;
+            }
+            return ($profile['risk_level'] ?? '无风险') === '极危险'
+                || (int) ($profile['risk_score'] ?? 0) >= $threshold;
         });
-        if (!$manual) {
-            $manual = array_filter($profiles, function ($profile) {
-                return in_array($profile['risk_level'] ?? '无风险', ['中风险', '高风险', '极危险'], true);
-            });
-        }
 
         return array_values(array_slice(array_map(function ($profile) {
             return $this->compactProfile($profile);
@@ -1667,6 +1725,9 @@ class SubscribeMonitorService
                 'critical_requires_core_signal' => true,
                 'critical_downgrade_discount' => 20,
             ],
+            'queue' => [
+                'watch_score' => 80,
+            ],
         ];
     }
 
@@ -1773,6 +1834,9 @@ class SubscribeMonitorService
             if (isset($data['guard']['critical_downgrade_discount'])) {
                 $rules['guard']['critical_downgrade_discount'] = max(0, min(100, (int) $data['guard']['critical_downgrade_discount']));
             }
+        }
+        if (isset($data['queue']) && is_array($data['queue']) && isset($data['queue']['watch_score'])) {
+            $rules['queue']['watch_score'] = max(0, min(100, (int) $data['queue']['watch_score']));
         }
         return $rules;
     }

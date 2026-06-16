@@ -144,6 +144,22 @@ grep -q "bulkDisposition" "$TARGET_DIR/public/assets/admin/subscribe-monitor-man
   echo "subscribe monitor admin asset missing batch disposition workflow" >&2
   exit 1
 }
+grep -q "clearProfile" "$TARGET_DIR/public/assets/admin/subscribe-monitor-manager.js" || {
+  echo "subscribe monitor admin asset missing clear profile workflow" >&2
+  exit 1
+}
+grep -q "profile/clear" "$TARGET_DIR/app/Http/Routes/V1/AdminRoute.php" || {
+  echo "AdminRoute missing subscribe monitor clear profile route" >&2
+  exit 1
+}
+grep -q "clearUserProfile" "$TARGET_DIR/app/Services/SubscribeMonitorService.php" || {
+  echo "SubscribeMonitorService missing clear user profile workflow" >&2
+  exit 1
+}
+grep -q "watch_score" "$TARGET_DIR/app/Services/SubscribeMonitorService.php" || {
+  echo "SubscribeMonitorService missing configurable watch queue threshold" >&2
+  exit 1
+}
 grep -q "smm-disposition-keyword" "$TARGET_DIR/public/assets/admin/subscribe-monitor-manager.js" || {
   echo "subscribe monitor admin asset missing disposition note/operator filter" >&2
   exit 1

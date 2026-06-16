@@ -53,6 +53,7 @@ class AdminRoute
             $router->post('/server/subscribe-monitor/snapshots/rebuild', 'V1\\Admin\\Server\\SubscribeMonitorController@rebuildSnapshots');
             $router->post('/server/subscribe-monitor/disposition', 'V1\\Admin\\Server\\SubscribeMonitorController@disposition');
             $router->get ('/server/subscribe-monitor/disposition/logs', 'V1\\Admin\\Server\\SubscribeMonitorController@dispositionLogs');
+            $router->post('/server/subscribe-monitor/profile/clear', 'V1\\Admin\\Server\\SubscribeMonitorController@clearProfile');
             $router->get ('/server/subscribe-monitor/dispatch-preview', 'V1\\Admin\\Server\\SubscribeMonitorController@dispatchPreview');
             $router->group([
                 'prefix' => 'server/trojan'

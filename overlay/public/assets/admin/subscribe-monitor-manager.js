@@ -302,7 +302,8 @@
         network_types: { threshold: 2, score: 12 }
       },
       network: { idc_score: 10, mobile_score: 0, fixed_score: 0, proxy_score: 35, vpn_score: 30, tor_score: 45, bot_score: 30 },
-      guard: { critical_requires_core_signal: true, critical_downgrade_discount: 20 }
+      guard: { critical_requires_core_signal: true, critical_downgrade_discount: 20 },
+      queue: { watch_score: 80 }
     };
     return mergeRules(defaults, (state.data && state.data.risk_rules) || {});
   }
@@ -539,9 +540,10 @@
 
   function renderDispositionQueue(title, rows, emptyText) {
     rows = rows || [];
+    var isReviewQueue = title.indexOf("待复核") >= 0;
     return [
       "<div class=\"smm-card\">",
-      "<div class=\"smm-card-head\"><div class=\"smm-card-title\">" + escapeHtml(title) + "</div><div class=\"smm-tools\"><button class=\"smm-btn smm-bulk-handled\" data-queue=\"" + escapeHtml(title) + "\">批量已处理</button><button class=\"smm-btn smm-bulk-clear\" data-queue=\"" + escapeHtml(title) + "\">批量清除</button><div class=\"smm-muted\">" + escapeHtml(rows.length) + " 个账号</div></div></div>",
+      "<div class=\"smm-card-head\"><div><div class=\"smm-card-title\">" + escapeHtml(title) + "</div><div class=\"smm-muted\">" + (isReviewQueue ? "仅显示手动观察或极危险/高分待复核账号" : "人工建议拉黑账号") + "</div></div><div class=\"smm-tools\"><button class=\"smm-btn smm-bulk-handled\" data-queue=\"" + escapeHtml(title) + "\">批量已处理</button><button class=\"smm-btn smm-bulk-clear\" data-queue=\"" + escapeHtml(title) + "\">批量移出队列</button><div class=\"smm-muted\">" + escapeHtml(rows.length) + " 个账号</div></div></div>",
       "<div class=\"smm-card-body\">",
       rows.length ? [
         "<div class=\"smm-table-wrap\"><table class=\"smm-queue-table\"><thead><tr>",
@@ -551,14 +553,16 @@
           var disposition = row.disposition || {};
           var overdue = row.disposition_overdue || {};
           var key = String(row.user_id || "");
+          var ageDays = overdue.days != null ? overdue.days : dispositionAgeDays(disposition);
+          var ageText = isReviewQueue ? "待复核 " + ageDays + " 天" : "处置 " + ageDays + " 天";
           return [
             "<tr>",
             "<td><div class=\"smm-main-text\">" + escapeHtml(row.email || "-") + "</div><div class=\"smm-sub-text\">ID " + escapeHtml(row.user_id || "-") + " / 套餐 " + escapeHtml(row.plan_id || "-") + "</div></td>",
             "<td><span class=\"smm-risk " + riskClass(row.risk_level) + "\">" + escapeHtml(row.risk_level || "无风险") + " " + escapeHtml(row.risk_score || 0) + "</span></td>",
-            "<td><span class=\"smm-disposition " + dispositionClass(disposition.status) + "\">" + escapeHtml(disposition.label || dispositionLabel(disposition.status)) + "</span><div class=\"smm-muted\">观察 " + escapeHtml((overdue.days != null ? overdue.days : dispositionAgeDays(disposition))) + " 天</div>" + (overdue.overdue ? "<div class=\"smm-overdue\">超过 " + escapeHtml(overdue.threshold_days || state.filters.watch_overdue_days) + " 天未复核</div>" : "") + "</td>",
+            "<td><span class=\"smm-disposition " + dispositionClass(disposition.status) + "\">" + escapeHtml(disposition.label || dispositionLabel(disposition.status)) + "</span><div class=\"smm-muted\">" + escapeHtml(ageText) + "</div>" + (overdue.overdue ? "<div class=\"smm-overdue\">超过 " + escapeHtml(overdue.threshold_days || state.filters.watch_overdue_days) + " 天未复核</div>" : "") + "</td>",
             "<td><div>" + escapeHtml(row.total || 0) + " 次</div><div class=\"smm-muted\">IP " + escapeHtml(row.ips || 0) + " / 入口 " + escapeHtml(row.hosts || 0) + "</div></td>",
             "<td>" + escapeHtml(formatTime(row.last_seen)) + "</td>",
-            "<td><button class=\"smm-btn smm-user-detail\" data-user=\"" + escapeHtml(key) + "\">详情</button></td>",
+            "<td><button class=\"smm-btn smm-user-detail\" data-user=\"" + escapeHtml(key) + "\">详情</button> <button class=\"smm-btn smm-queue-remove\" data-user=\"" + escapeHtml(key) + "\">移出</button> " + (isReviewQueue ? "<button class=\"smm-btn smm-clear-profile-row\" data-user=\"" + escapeHtml(key) + "\">清除画像</button>" : "") + "</td>",
             "</tr>"
           ].join("");
         }).join(""),
@@ -573,11 +577,11 @@
     var watchRows = (state.data && state.data.watch_profiles) || dispositionRows(rows || [], ["watch"]);
     var blacklistRows = (state.data && state.data.blacklist_profiles) || dispositionRows(rows || [], ["blacklist_suggested"]);
     var activeRows = state.queueTab === "blacklist" ? blacklistRows : watchRows;
-    var activeTitle = state.queueTab === "blacklist" ? "黑名单列表" : "观察区列表";
+    var activeTitle = state.queueTab === "blacklist" ? "建议拉黑列表" : "待复核列表";
     return [
       "<div class=\"smm-card\" style=\"margin-top:16px;\">",
-      "<div class=\"smm-card-head\"><div class=\"smm-card-title\">人工处置队列</div><div class=\"smm-queue-tabs\"><button class=\"smm-queue-tab " + (state.queueTab === "watch" ? "active" : "") + "\" data-queue-tab=\"watch\">观察区 " + escapeHtml(watchRows.length) + "</button><button class=\"smm-queue-tab " + (state.queueTab === "blacklist" ? "active" : "") + "\" data-queue-tab=\"blacklist\">建议拉黑 " + escapeHtml(blacklistRows.length) + "</button></div></div>",
-      renderDispositionQueue(activeTitle, activeRows, state.queueTab === "blacklist" ? "暂无建议拉黑的账号" : "暂无加入观察的账号"),
+      "<div class=\"smm-card-head\"><div><div class=\"smm-card-title\">人工处置队列</div><div class=\"smm-muted\">中风险和普通高风险不会自动进入待复核列表</div></div><div class=\"smm-queue-tabs\"><button class=\"smm-queue-tab " + (state.queueTab === "watch" ? "active" : "") + "\" data-queue-tab=\"watch\">待复核 " + escapeHtml(watchRows.length) + "</button><button class=\"smm-queue-tab " + (state.queueTab === "blacklist" ? "active" : "") + "\" data-queue-tab=\"blacklist\">建议拉黑 " + escapeHtml(blacklistRows.length) + "</button></div></div>",
+      renderDispositionQueue(activeTitle, activeRows, state.queueTab === "blacklist" ? "暂无建议拉黑的账号" : "暂无待复核账号"),
       "</div>"
     ].join("");
   }
@@ -796,11 +800,12 @@
         "<textarea id=\"smm-action-note\" class=\"smm-action-note\" placeholder=\"填写本次处置备注，方便后续复盘\"></textarea>",
         "<div class=\"smm-drawer-actions\" style=\"margin:0 0 16px;\">",
         "<button class=\"smm-btn smm-action\" data-action=\"watch\">加入观察</button>",
+        "<button class=\"smm-btn smm-action\" data-action=\"none\">移出观察</button>",
         "<button class=\"smm-btn smm-action\" data-action=\"handled\">标记已处理</button>",
         "<button class=\"smm-btn smm-action\" data-action=\"whitelist\">白名单</button>",
         "<button class=\"smm-btn smm-action\" data-action=\"freeze_suggested\">建议冻结</button>",
         "<button class=\"smm-btn smm-btn-danger smm-action\" data-action=\"blacklist_suggested\">建议拉黑</button>",
-        "<button class=\"smm-btn smm-action\" data-action=\"none\">清除处置</button>",
+        "<button class=\"smm-btn smm-btn-danger smm-clear-profile\">清除行为画像</button>",
         "</div>",
         "<div class=\"smm-section-title\">处置记录</div>",
         logs.length ? [
@@ -844,7 +849,7 @@
       "<div class=\"smm-drawer-mask\" id=\"smm-drawer-mask\">",
 	      "<div class=\"smm-drawer\">",
 	      "<div class=\"smm-drawer-head\"><div class=\"smm-drawer-top\"><div><div class=\"smm-drawer-title\">" + escapeHtml(row.email || "-") + "</div><div class=\"smm-drawer-meta\">UID " + escapeHtml(row.user_id || "-") + " / 套餐 " + escapeHtml(row.plan_id || "-") + " / 最近拉取 " + escapeHtml(formatTime(row.last_seen)) + "</div></div><div style=\"display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end;\"><span class=\"smm-risk " + riskClass(row.risk_level) + "\">" + escapeHtml(row.risk_level || "无风险") + " " + escapeHtml(row.risk_score || 0) + "</span><span class=\"smm-disposition " + dispositionClass((row.disposition || {}).status) + "\">" + escapeHtml(((row.disposition || {}).label) || dispositionLabel((row.disposition || {}).status)) + "</span></div></div>",
-	      "<div class=\"smm-drawer-actions\"><button class=\"smm-btn smm-action\" data-action=\"watch\">加入观察</button><button class=\"smm-btn smm-action\" data-action=\"handled\">已处理</button><button class=\"smm-btn smm-action\" data-action=\"whitelist\">白名单</button><button class=\"smm-btn smm-action\" data-action=\"freeze_suggested\">建议冻结</button><button class=\"smm-btn smm-btn-danger smm-action\" data-action=\"blacklist_suggested\">建议拉黑</button><button id=\"smm-drawer-close\" class=\"smm-btn\">关闭</button></div></div>",
+	      "<div class=\"smm-drawer-actions\"><button class=\"smm-btn smm-action\" data-action=\"watch\">加入观察</button><button class=\"smm-btn smm-action\" data-action=\"none\">移出观察</button><button class=\"smm-btn smm-action\" data-action=\"handled\">已处理</button><button class=\"smm-btn smm-action\" data-action=\"whitelist\">白名单</button><button class=\"smm-btn smm-action\" data-action=\"freeze_suggested\">建议冻结</button><button class=\"smm-btn smm-btn-danger smm-action\" data-action=\"blacklist_suggested\">建议拉黑</button><button class=\"smm-btn smm-btn-danger smm-clear-profile\">清除行为画像</button><button id=\"smm-drawer-close\" class=\"smm-btn\">关闭</button></div></div>",
 	      row.behavior ? "" : "<div class=\"smm-empty\">当前账号来自全局队列快照。完整拉取明细请在账号风险列表当前页打开，或重新查询定位该账号。</div>",
 	      "<div class=\"smm-drawer-tabs\">" + tabs.map(function (tab) {
         return "<button class=\"smm-tab" + (state.drawerTab === tab[0] ? " active" : "") + "\" data-tab=\"" + escapeHtml(tab[0]) + "\">" + escapeHtml(tab[1]) + "</button>";
@@ -905,6 +910,7 @@
         ruleInput("smm_level_medium", "中风险分数线", rules.levels.medium),
         ruleInput("smm_level_high", "高风险分数线", rules.levels.high),
         ruleInput("smm_level_critical", "极危险分数线", rules.levels.critical),
+        ruleInput("smm_queue_watch_score", "待复核分数线", rules.queue.watch_score),
         ruleInput("smm_request_t1", "请求阈值 1", tierValue(rules, "request", 0, "threshold")),
         ruleInput("smm_request_s1", "请求加分 1", tierValue(rules, "request", 0, "score")),
         ruleInput("smm_request_t2", "请求阈值 2", tierValue(rules, "request", 1, "threshold")),
@@ -1155,6 +1161,29 @@
         saveDisposition(row, button.getAttribute("data-action") || "watch");
       };
     });
+    Array.prototype.forEach.call(document.querySelectorAll(".smm-clear-profile"), function (button) {
+      button.onclick = function () {
+        var row = selectedUser();
+        if (!row) return;
+        clearProfile(row);
+      };
+    });
+    Array.prototype.forEach.call(document.querySelectorAll(".smm-queue-remove"), function (button) {
+      button.onclick = function () {
+        var key = button.getAttribute("data-user") || "";
+        var rows = ((state.data && state.data.watch_profiles) || []).concat((state.data && state.data.blacklist_profiles) || []);
+        var row = rows.find(function (item) { return String(item.user_id || "") === String(key); });
+        if (row) saveDisposition(row, "none");
+      };
+    });
+    Array.prototype.forEach.call(document.querySelectorAll(".smm-clear-profile-row"), function (button) {
+      button.onclick = function () {
+        var key = button.getAttribute("data-user") || "";
+        var rows = (state.data && state.data.watch_profiles) || [];
+        var row = rows.find(function (item) { return String(item.user_id || "") === String(key); });
+        if (row) clearProfile(row);
+      };
+    });
     Array.prototype.forEach.call(document.querySelectorAll(".smm-bulk-handled,.smm-bulk-clear"), function (button) {
       button.onclick = function () {
         var title = button.getAttribute("data-queue") || "";
@@ -1307,6 +1336,9 @@
       guard: {
         critical_requires_core_signal: true,
         critical_downgrade_discount: numberValue("smm_guard_critical_discount")
+      },
+      queue: {
+        watch_score: numberValue("smm_queue_watch_score")
       }
     };
   }
@@ -1366,6 +1398,26 @@
       return loadAll(true);
     }).catch(function (error) {
       setStatus(error.message || "处置保存失败", "error");
+    });
+  }
+
+  function clearProfile(row) {
+    if (!row || !row.user_id) return;
+    if (!window.confirm("确定清除这个账号的行为画像吗？这会删除该账号的订阅拉取记录、风险快照和当前处置状态。")) {
+      return;
+    }
+    var noteEl = document.getElementById("smm-action-note");
+    var note = noteEl ? noteEl.value.trim() : "";
+    setStatus("正在清除行为画像...");
+    request("/server/subscribe-monitor/profile/clear", null, "POST", {
+      user_id: row.user_id,
+      note: note || "人工确认正常，清除行为画像"
+    }).then(function () {
+      state.selectedUserId = null;
+      setStatus("行为画像已清除", "success");
+      return loadAll(true);
+    }).catch(function (error) {
+      setStatus(error.message || "行为画像清除失败", "error");
     });
   }
 

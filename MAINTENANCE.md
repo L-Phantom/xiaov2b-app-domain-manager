@@ -243,6 +243,10 @@ This means panel upgrades do not have to preserve App-specific full-meta logic f
   - The rule table now uses compact `匹配摘要` chips with full scope in hover text, fixed table column sizing, and a real `查看映射` / `收起映射` toggle for mapping previews.
   - `AppDomainService::matchBindingPayload()` sorts behavior-scoped groups before normal groups for App subscription matching, keeping runtime priority consistent with the UI sections.
   - `scripts/scenario_verify.php` also confirms ordinary entrance groups affect App subscriptions but do not affect plain `/api/v1/client/subscribe`.
+- 2026-06-17 behavior-monitor queue correction:
+  - `观察区` was renamed in the UI to `待复核列表` and no longer auto-includes all medium/high risk users. It now includes only manual `watch` users, `极危险` users, or users whose score reaches configurable `queue.watch_score` (default 80).
+  - Added `profile/clear` admin API and `SubscribeMonitorService::clearUserProfile()` so an operator can clear one user's subscribe access logs, risk snapshots, and current disposition after manual confirmation. A disposition log entry is kept for audit.
+  - The drawer and queue table now expose `移出观察` for clearing only the current disposition and `清除行为画像` for resetting that user's behavior profile.
 - 2026-06-16 free IP intelligence updater:
   - Added `scripts/update_free_ip_intelligence.php` for the user's preferred no-cost intelligence path.
   - Current default sources: IPtoASN IPv4/IPv6 TSV for ASN / AS name / country code, plus X4BNet IPv4 Datacenter/VPN CIDR lists for coarse network/risk tagging.
