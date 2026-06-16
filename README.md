@@ -3,12 +3,14 @@
 这是一个给 `xiaov2b / v2board` 管理后台使用的可复装补丁包。
 
 目标：
-- 在后台 `服务器` 分类下增加 `App域名管理`
+- 在后台 `服务器` 分类下增加 `域名分发`
 - 增加 `App 专用订阅`、`App bootstrap`、`App API 多域名`
 - 增加 `App 专用完整 Meta 订阅`，供客户端第二阶段静默升级使用
 - 增加 `/api/v2/app/*` App API 兼容层，覆盖启动、能力、登录会话、用户信息、节点清单、套餐、订单、公告、诊断上报等客户端页面能力
 - 在节点管理里增加 `App可见` 开关
 - 入口域名替换由规则页统一管理，可按节点、套餐、权限组分发
+- 域名分发入口组可按行为监管的风险等级 / 人工处置状态匹配，用于给观察或建议拉黑用户下发专属入口域名
+- 在后台 `服务器` 分类下增加独立 `行为监管`，观察订阅/App 配置拉取行为、入口域名、IP、账号与 token hash 异常分布，并按可配置规则生成账号风险画像
 - 让普通网页订阅与 App 专用订阅分流
 - 面板升级后可再次一键部署
 
@@ -51,15 +53,33 @@
 - `scripts/preflight.php`
   检查目标站点、PHP 能力、规则表和节点字段状态
 - `scripts/migrate_app_domain.php`
-  创建 App 域名规则表，默认 dry-run，明确传 `--apply` 才执行
+  创建 App 域名规则表、行为监管日志表，默认 dry-run，明确传 `--apply` 才执行
 - `scripts/package_release.sh`
   做 manifest / PHP / JS / shell 检查，生成补丁包 tar.gz 和 SHA256
+- `scripts/update_ip2region_xdb.sh`
+  下载 / 更新 `ip2region_v4.xdb` 到目标站点 `storage/ip2region/`，用于行为监管 IP 归属地解析
+- `scripts/update_ip_intelligence.php`
+  导出待补充情报的订阅 IP，或导入 ASN、AS 名称、网络类型、代理/VPN/风险分等 IP 情报 CSV
+- `scripts/update_free_ip_intelligence.php`
+  使用免费公开源为最近订阅 IP 补充 ASN、AS 名称、Datacenter/VPN 粗分类情报
+- `scripts/cleanup_subscribe_monitor.php`
+  行为监管数据清理脚本。默认只 dry-run；可按保留天数清理原始拉取记录、风险快照、IP 情报缓存，处置日志长期保留。
 - `scripts/fresh_upstream_drill.sh`
   拉取原版 upstream 到临时目录，做补丁包结构验证和安装 dry-run / apply 演练
 - `PRODUCTION_RUNBOOK.md`
   生产平台升级、验证、回滚和故障判断步骤
 - `sql/app_domain_rules.sql`
   App 域名分发规则表 SQL
+- `sql/subscribe_access_logs.sql`
+  行为监管订阅访问日志表 SQL，记录 token hash，不保存明文 token
+- `overlay/app/Services/SubscribeMonitorService.php`
+  行为监管聚合服务。当前只使用本地数据库可计算信号：短窗口频率、账号状态、User-Agent、入口域名策略、同 IP 多账号 / 多 token，并支持风险画像快照缓存、风险变化时间线、处置备注/操作人筛选、观察超期提示、IP 情报状态和服务端分页基础。
+- `overlay/app/Services/Ip2RegionService.php` 与 `overlay/app/Support/Ip2Region/Searcher.class.php`
+  行为监管 IP 归属地解析。优先读取 `storage/ip2region/ip2region_v4.xdb`，缺失时自动跳过，不影响订阅下发或后台页面。
+- `scripts/update_ip_intelligence.php`
+  行为监管 IP 情报导入器。它不会联网，也不会猜测代理/VPN；只把可信来源整理出的 CSV 写入 `v2_subscribe_ip_cache`，供账号风险画像读取。
+- `scripts/update_free_ip_intelligence.php`
+  免费 IP 情报更新器。当前默认使用 IPtoASN 的 IPv4/IPv6 ASN 数据，以及 X4BNet 的 IPv4 Datacenter/VPN CIDR 列表。该结果只作为行为监管风险信号之一，不做一票否决。
 - `overlay/resources/rules/app.meta.clash.yaml`
   App 第二阶段完整 Meta 模板
 - `overlay/app/Http/Routes/V2/AppRoute.php`
@@ -99,12 +119,17 @@ php82 scripts/migrate_app_domain.php /path/to/v2board-root --dry-run
 php82 scripts/migrate_app_domain.php /path/to/v2board-root --apply
 bash install.sh --dry-run /path/to/v2board-root
 bash install.sh /path/to/v2board-root
+bash scripts/update_ip2region_xdb.sh /path/to/v2board-root
 ```
 
 如果不传路径，会尝试使用当前目录（要求当前目录下存在 `artisan`）。
 
 安装时会：
 - 可选创建 `v2_app_domain_rules` 规则表
+- 可选创建 `v2_subscribe_access_logs` 行为监管日志表
+- 可选创建 `v2_subscribe_ip_cache` IP 归属地缓存表
+- 可选创建 `v2_subscribe_dispositions` / `v2_subscribe_disposition_logs` 人工处置表
+- 可选创建 `v2_subscribe_risk_snapshots` 风险画像快照表
 - 可选补齐节点表 `app_show` 与 `app_domain_replace` 字段
 - 输出将覆盖 / 新增 / 不变的文件清单、源文件 SHA256、目标文件 SHA256；`--dry-run` 只预览不改文件
 - 备份原文件到目标站点下的 `.app-domain-manager-backups/`
@@ -114,6 +139,99 @@ bash install.sh /path/to/v2board-root
 - 执行 `view:clear`
 - 执行 `config:clear` 与 `config:cache`
 - 如果检测到 Webman，优先执行完整 `stop/start`，必要时才回退到进程 reload
+
+`ip2region_v4.xdb` 不会直接打进补丁包，避免大文件和更新节奏污染 overlay。需要启用 IP 归属地时运行：
+
+```bash
+bash scripts/update_ip2region_xdb.sh /path/to/v2board-root
+```
+
+也可以传入自建镜像地址：
+
+```bash
+bash scripts/update_ip2region_xdb.sh /path/to/v2board-root https://your-mirror.example.com/ip2region_v4.xdb
+```
+
+如果要补充 ASN / AS 名称 / IDC、家宽、移动网络 / 代理、VPN、Tor、Bot 等情报，先导出最近访问过但缺少情报的 IP：
+
+```bash
+php82 scripts/update_ip_intelligence.php /path/to/v2board-root --export-missing > missing-ips.csv
+```
+
+再把第三方或自建 IP 库结果整理成 CSV 后导入：
+
+```bash
+php82 scripts/update_ip_intelligence.php /path/to/v2board-root ip-intelligence.csv --dry-run
+php82 scripts/update_ip_intelligence.php /path/to/v2board-root ip-intelligence.csv --apply
+```
+
+CSV 推荐字段：
+
+```csv
+ip,asn,as_name,network_type,ip_risk_type,ip_risk_score,source
+1.1.1.1,13335,Cloudflare,idc,,0,manual_csv
+```
+
+字段说明：
+- `network_type` 只接受 `idc`、`fixed`、`mobile`
+- `ip_risk_type` 只接受 `proxy`、`vpn`、`tor`、`bot`
+- 没有可靠来源时不要填 `ip_risk_type`，行为监管会保持未知，不会伪造风险判断
+
+如果只想直接使用免费公开源补一个大致正确的 IP 画像，可以运行：
+
+```bash
+php82 scripts/update_free_ip_intelligence.php /path/to/v2board-root --dry-run
+php82 scripts/update_free_ip_intelligence.php /path/to/v2board-root --apply
+```
+
+默认免费源：
+- `IPtoASN`：补充 ASN、AS 名称、国家代码，支持 IPv4 / IPv6
+- `X4BNet/lists_vpn`：补充 IPv4 Datacenter / VPN CIDR 粗分类
+
+建议用 cron 每天跑一次：
+
+```cron
+17 3 * * * cd /path/to/app-domain-manager-package && php82 scripts/update_free_ip_intelligence.php /path/to/v2board-root --apply >/tmp/xiaov2b-free-ip-intel.log 2>&1
+```
+
+行为监管数据清理建议也放进 cron。先 dry-run 看匹配数量：
+
+```bash
+php82 scripts/cleanup_subscribe_monitor.php /path/to/v2board-root --dry-run
+```
+
+确认无误后执行：
+
+```bash
+php82 scripts/cleanup_subscribe_monitor.php /path/to/v2board-root --apply \
+  --access-log-days=180 \
+  --snapshot-days=365 \
+  --ip-cache-days=90
+```
+
+推荐保留策略：
+- 原始拉取记录：90-180 天
+- 风险画像快照：365 天
+- IP 情报缓存：30-90 天
+- 人工处置日志：长期保留
+
+行为监管页面的数据口径：
+- `账号风险列表` 使用服务端分页，避免一次拉取过多账号画像。
+- 顶部风险分布、`高风险列表`、`观察区列表`、`黑名单列表` 优先使用 `v2_subscribe_risk_snapshots` 的最新快照做全量统计，不跟随当前页漂移。
+- 如果快照表为空或未迁移，页面会临时回退到当前页统计，并在 `画像统计口径` 状态卡提示需要先重算风险快照。
+- 风险规则调整后，点击后台 `重算风险快照`，有变化的账号才会新增快照记录。
+- 每个账号画像会返回 `risk_explain`，用于展示判断结论、建议动作、核心证据和抵扣因素，避免管理员只看到分数而不知道该怎么处理。
+
+黑名单专属入口建议流程：
+- 在 `行为监管` 中确认账号行为后，人工标记为 `建议拉黑`。
+- 在 `域名分发` 的 `入口规则` 点击 `创建黑名单入口组`，填写专属入口域名，选择要下发的节点和端口。
+- 这个入口组默认只匹配处置状态为 `建议拉黑` 的账号；普通用户、观察用户、白名单用户不会命中。
+- `入口规则` 页面会把带风险等级 / 处置状态的规则放在 `行为处置入口`，普通规则放在 `普通入口规则`，避免黑名单专属入口和日常 App 分发规则混在同一排序里误判。
+- 带风险等级 / 处置状态的入口组会同时作用于普通 `/api/v1/client/subscribe` 和 App 专用订阅；不带风险 / 处置条件的普通入口组仍只按 App 专用域名分发链路处理，避免误改普通订阅。
+- 即使 `入口域名规则` 开启，只要普通订阅用户没有命中 `行为处置入口`，普通 `/api/v1/client/subscribe` 仍保持原节点入口；`普通入口规则` 不会影响普通订阅。
+- 运行时同样优先匹配 `行为处置入口`，再匹配普通入口规则，防止普通规则先命中后覆盖建议拉黑 / 观察用户的专属入口。
+- `命中后隐藏绑定节点` 只用于不想给这部分用户下发某些节点的隔离策略；如果目标是给黑名单用户下发独立入口，请保持关闭并绑定对应节点。
+- 行为监管不会自动封禁、冻结、修改用户组或写死入口域名。实际下发哪个入口，始终由 `域名分发` 的入口组配置决定。
 
 ## 回滚
 
@@ -168,6 +286,7 @@ php82 scripts/scenario_verify.php /path/to/v2board-root app-edge.example.com
 - 只在运行时打开 `app_domain_enable=1`
 - 临时注入 `app_domain_replace_host`
 - 如果规则表存在，会在事务里临时创建规则，验证规则匹配优先级
+- 如果入口组与处置表存在，会临时标记一个用户为 `建议拉黑`，验证普通订阅与 App 专用订阅都会命中黑名单专属入口组、端口替换、清除处置后不再命中
 - 输出普通节点样本与 App 节点样本
 - 最后自动回滚，不写入数据库
 

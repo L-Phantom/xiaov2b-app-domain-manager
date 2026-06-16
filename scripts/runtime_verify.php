@@ -38,6 +38,23 @@ $result = [
         'count' => \Illuminate\Support\Facades\Schema::hasTable('v2_app_domain_rules') ? \App\Models\AppDomainRule::count() : null,
         'groups_table_exists' => \Illuminate\Support\Facades\Schema::hasTable('v2_app_domain_groups'),
         'bindings_table_exists' => \Illuminate\Support\Facades\Schema::hasTable('v2_app_domain_bindings'),
+        'groups_has_risk_levels' => \Illuminate\Support\Facades\Schema::hasTable('v2_app_domain_groups') && \Illuminate\Support\Facades\Schema::hasColumn('v2_app_domain_groups', 'risk_levels'),
+        'groups_has_disposition_statuses' => \Illuminate\Support\Facades\Schema::hasTable('v2_app_domain_groups') && \Illuminate\Support\Facades\Schema::hasColumn('v2_app_domain_groups', 'disposition_statuses'),
+        'groups_has_hide_matched_nodes' => \Illuminate\Support\Facades\Schema::hasTable('v2_app_domain_groups') && \Illuminate\Support\Facades\Schema::hasColumn('v2_app_domain_groups', 'hide_matched_nodes'),
+        'subscribe_ip_cache_has_asn' => \Illuminate\Support\Facades\Schema::hasTable('v2_subscribe_ip_cache') && \Illuminate\Support\Facades\Schema::hasColumn('v2_subscribe_ip_cache', 'asn'),
+        'subscribe_ip_cache_has_network_type' => \Illuminate\Support\Facades\Schema::hasTable('v2_subscribe_ip_cache') && \Illuminate\Support\Facades\Schema::hasColumn('v2_subscribe_ip_cache', 'network_type'),
+        'subscribe_ip_cache_has_ip_risk_type' => \Illuminate\Support\Facades\Schema::hasTable('v2_subscribe_ip_cache') && \Illuminate\Support\Facades\Schema::hasColumn('v2_subscribe_ip_cache', 'ip_risk_type'),
+        'subscribe_dispositions_table_exists' => \Illuminate\Support\Facades\Schema::hasTable('v2_subscribe_dispositions'),
+        'subscribe_disposition_logs_table_exists' => \Illuminate\Support\Facades\Schema::hasTable('v2_subscribe_disposition_logs'),
+        'subscribe_risk_snapshots_table_exists' => \Illuminate\Support\Facades\Schema::hasTable('v2_subscribe_risk_snapshots'),
+        'subscribe_disposition_count' => \Illuminate\Support\Facades\Schema::hasTable('v2_subscribe_dispositions') ? \Illuminate\Support\Facades\DB::table('v2_subscribe_dispositions')->count() : null,
+        'subscribe_risk_snapshot_count' => \Illuminate\Support\Facades\Schema::hasTable('v2_subscribe_risk_snapshots') ? \Illuminate\Support\Facades\DB::table('v2_subscribe_risk_snapshots')->count() : null,
+        'subscribe_ip_cache_count' => \Illuminate\Support\Facades\Schema::hasTable('v2_subscribe_ip_cache') ? \Illuminate\Support\Facades\DB::table('v2_subscribe_ip_cache')->count() : null,
+        'subscribe_ip_intelligence_count' => \Illuminate\Support\Facades\Schema::hasTable('v2_subscribe_ip_cache') ? \Illuminate\Support\Facades\DB::table('v2_subscribe_ip_cache')->where(function ($query) {
+            $query->whereNotNull('asn')
+                ->orWhereNotNull('as_name')
+                ->orWhereNotNull('ip_risk_type');
+        })->count() : null,
         'group_count' => \Illuminate\Support\Facades\Schema::hasTable('v2_app_domain_groups') ? \App\Models\AppDomainGroup::count() : null,
         'binding_count' => \Illuminate\Support\Facades\Schema::hasTable('v2_app_domain_bindings') ? \App\Models\AppDomainBinding::count() : null,
     ],

@@ -31,6 +31,12 @@ This repository should keep App-specific behavior isolated to a small overlay se
   - `overlay/public/assets/admin/app-domain-manager.js`
   - `overlay/resources/views/admin.blade.php`
   - `overlay/routes/web.php`
+- subscription behavior monitoring files under:
+  - `overlay/app/Models/SubscribeAccessLog.php`
+  - `overlay/app/Services/SubscribeMonitorService.php`
+  - `overlay/app/Http/Controllers/V1/Admin/Server/SubscribeMonitorController.php`
+  - `overlay/public/assets/admin/subscribe-monitor-manager.js`
+  - `sql/subscribe_access_logs.sql`
 
 ## Current Production Context
 
@@ -127,11 +133,14 @@ This means panel upgrades do not have to preserve App-specific full-meta logic f
 - admin `server/app-domain/config`
 - admin `server/app-domain/rules`
 - admin `server/app-domain/options`
+- admin `server/subscribe-monitor/fetch`
 - admin route `/#/server/app-domain`
+- admin route `/#/server/subscribe-monitor`
 - `app_show=0` nodes are not returned to App-only subscription
 - `app_domain_replace=0` nodes keep their original host when global App domain replacement is enabled
 - when `app_domain_rule_enable=1`, unmatched nodes keep their original host instead of falling back to the global replacement host
 - normal web subscription keeps original behavior and does not use the App-only template
+- behavior monitoring remains observe-only. It records subscription/App config access best-effort and must never block, poison, rate-limit, or change subscription responses.
 
 ## Phase 5 Release Engineering
 
@@ -177,3 +186,65 @@ This means panel upgrades do not have to preserve App-specific full-meta logic f
 - When rule mode is enabled, matching bindings override node host/port even if the legacy per-node `app_domain_replace` field is 0. That legacy field only gates the old global replacement path.
 - Old `v2_app_domain_rules` rows remain available as compatibility fallback, but normal UI should not expose them as the primary operation surface.
 - The node management `app_domain_replace` field remains available to existing controllers and old data, but its visible `域名替换` table/mobile controls are hidden to avoid a second competing policy surface.
+
+## Behavior Monitoring
+
+- `行为监管` is a separate server menu item, not a subpage of `域名分发`.
+- First production version is observe-only:
+  - records `/api/v1/client/subscribe`
+  - records custom App subscription paths such as `/api/v1/client/custom_app/subscribe`
+  - records `flag=app_meta`
+  - records `/api/v1/client/app/getConfig`
+  - never stores raw token, only SHA256 token hash prefix is shown in UI
+  - write failures are swallowed so user subscription delivery is not affected
+- Admin UI shows today/range totals, unique users/IPs/tokens, host ranking, high-frequency accounts, single-IP multi-token alerts, and recent records.
+- 2026-06-16 product correction: the primary UI should be account-risk oriented, not raw event-log oriented. First screen shows `账号风险画像` with `无风险 / 中风险 / 高风险 / 极危险`, risk score, reasons, request/IP/host/client counts, and last seen time. Expanding an account shows recent subscription pulls with method, device/client, network IP, entry host, path, and status.
+- Do not automatically move users into special permission groups yet. The intended future direction is to let risk groups cooperate with domain distribution, but first keep the feature as observation + manual judgment to avoid false positives affecting production users.
+- 2026-06-16 follow-up: risk prediction must be configurable, not hard-coded. Added `GET/POST server/subscribe-monitor/config`, persisted under `v2board.subscribe_monitor_risk_rules`, and the UI exposes a `风险规则` panel for risk level score lines plus IP/entry/client/request/token/failure thresholds and scores. The account list no longer shows risk-reason description chips; it only shows level, score, and metrics.
+- 2026-06-16 database-signal hardening: before adding an IP geolocation/reputation database, the monitor now extracts every safe signal available from local subscription logs:
+  - short-window frequency: last 10 minutes, last hour, today, max requests per minute, and shortest interval
+  - account state: expired account, no plan, and exhausted traffic still pulling subscriptions
+  - client behavior: suspicious User-Agent keywords, trusted client keywords, and empty User-Agent hits
+  - entry behavior: trusted/watch/risk host lists, with optional unknown-host scoring when trusted hosts are configured
+  - sharing behavior: same IP used by multiple accounts or multiple token hashes inside the selected time range
+- These signals remain observe-only. They only adjust the account risk profile returned by `server/subscribe-monitor/fetch`; they do not block subscriptions, mutate users, or change permission groups.
+- 2026-06-16 ip2region integration:
+  - Added `v2_subscribe_ip_cache`, `SubscribeIpCache`, `Ip2RegionService`, and the official Apache-2.0 ip2region PHP xdb searcher under `app/Support/Ip2Region/Searcher.class.php`.
+  - The xdb database file is intentionally not bundled in the overlay package. Use `bash scripts/update_ip2region_xdb.sh /path/to/v2board-root` to place `ip2region_v4.xdb` under `storage/ip2region/`.
+  - If the xdb file is absent, behavior monitoring remains functional and simply omits geolocation signals.
+  - Account behavior now exposes `geo` metrics and per-record `ip_region`; risk rules can score multi-country, multi-region, multi-city, and multi-ISP behavior.
+- 2026-06-16 IP intelligence importer:
+  - Added `scripts/update_ip_intelligence.php` as the stable ingestion path for ASN, AS name, network type, and proxy/VPN/Tor/Bot intelligence.
+  - The importer can export recently seen IPs that still lack intelligence with `--export-missing`, then import trusted CSV data with `--dry-run` / `--apply`.
+  - It intentionally does not call a live third-party API and does not infer proxy/VPN by itself. Unknown risk remains unknown until a reliable source fills `ip_risk_type`.
+  - `runtime_verify.php` now reports IP cache count and rows with real intelligence so deployments can tell whether the behavior monitor is using only geography or richer network intelligence.
+- 2026-06-17 behavior-monitor cache and linkage closure:
+  - Added `v2_subscribe_risk_snapshots` and `SubscribeRiskSnapshot` so account risk profiles can be cached as a timeline instead of only being recalculated from raw access logs.
+  - `server/subscribe-monitor/snapshots/rebuild` manually rebuilds snapshots after rule changes; unchanged profiles do not create duplicate snapshot rows.
+  - Added `scripts/cleanup_subscribe_monitor.php` for retention cleanup: raw access logs, risk snapshots, and IP cache are cleaned by age; disposition logs stay long-term.
+  - The behavior monitor now exposes snapshot/IP/retention status cards, risk timeline detail tab, observation and blacklist queues, batch handled/clear actions, and a basic server-side pagination foundation.
+  - Added `server/subscribe-monitor/dispatch-preview` and the drawer `下发预览` tab. It shows the current user's subscribe URL, risk/disposition state, matched entrance group or legacy rule, original host/port, delivered host/port, and hidden-node decisions.
+  - App domain entrance groups now accept `risk_levels`, `disposition_statuses`, and `hide_matched_nodes` through validation, so risk/disposition based domain distribution can actually be saved.
+  - Added disposition note/operator filtering and watch overdue hints. Admins can filter by disposition note/operator, choose an overdue threshold, and see `超过 N 天未复核` in observation/blacklist queues.
+  - IP intelligence status cards now distinguish xdb database status, cache count, ASN count, IDC count, VPN count, hit/miss count, and cache retention, so the monitor is less of a black box.
+  - Snapshot-backed profile overview is now separated from the paged account table: top risk distribution, high-risk list, observation queue, and blacklist queue use latest risk snapshots for the current filter scope, while `账号风险列表` remains server-side paginated. If snapshots are unavailable, the UI clearly falls back to current-page statistics through the `画像统计口径` card.
+  - This remains manual/observe-only. The system can suggest or preview risk-based distribution, but it must not automatically ban, freeze, or mutate user groups.
+- 2026-06-17 blacklist entrance group closure:
+  - Domain distribution now exposes a `创建黑名单入口组` UI template under `入口规则`. It preselects the `建议拉黑` disposition status and keeps the actual entrance domain/node binding in `域名分发`, not in behavior monitor.
+  - Toggling an entrance group no longer drops `risk_levels`, `disposition_statuses`, or `hide_matched_nodes`, preventing a blacklist-specific group from accidentally becoming a global entrance group.
+  - `scripts/scenario_verify.php` now performs a transaction-only drill for `建议拉黑` disposition routing: dedicated host/port are applied while the disposition exists, preview reports the matched group, and clearing the disposition stops the dedicated routing.
+- 2026-06-17 plain subscription behavior-scope routing fix:
+  - The original closure only applied entrance groups through `getAvailableAppServers()`, so `/api/v1/client/subscribe` kept original hosts even after a user was marked `建议拉黑`.
+  - `ServerService::getAvailableServers()` now applies only behavior-scoped entrance groups, meaning groups with `risk_levels` or `disposition_statuses`. This lets blacklist/watch/risk entrance groups affect plain subscriptions while keeping normal App-only global/rule distribution out of the public subscription path.
+  - `scripts/scenario_verify.php` now checks both plain subscribe server payloads and App subscribe payloads for blacklist dedicated host/port, plus clear-disposition rollback.
+- 2026-06-17 domain distribution UI closure:
+  - Admin menu/page display name is now `域名分发`.
+  - `入口规则` now separates behavior-scoped entrance groups into `行为处置入口` and regular App distribution groups into `普通入口规则`, so blacklist/watch entrances are visually managed apart from normal rules.
+  - The rule table now uses compact `匹配摘要` chips with full scope in hover text, fixed table column sizing, and a real `查看映射` / `收起映射` toggle for mapping previews.
+  - `AppDomainService::matchBindingPayload()` sorts behavior-scoped groups before normal groups for App subscription matching, keeping runtime priority consistent with the UI sections.
+  - `scripts/scenario_verify.php` also confirms ordinary entrance groups affect App subscriptions but do not affect plain `/api/v1/client/subscribe`.
+- 2026-06-16 free IP intelligence updater:
+  - Added `scripts/update_free_ip_intelligence.php` for the user's preferred no-cost intelligence path.
+  - Current default sources: IPtoASN IPv4/IPv6 TSV for ASN / AS name / country code, plus X4BNet IPv4 Datacenter/VPN CIDR lists for coarse network/risk tagging.
+  - This is intentionally approximate and should be treated as one signal among request frequency, traffic behavior, host policy, UA behavior, and same-IP sharing. It must not auto-block or auto-move users without a later explicit product decision.
+- Future ASN/proxy/VPN database integrations should write into `v2_subscribe_ip_cache` through the importer format or an equivalent provider wrapper, instead of creating a separate risk model.

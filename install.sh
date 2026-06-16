@@ -165,6 +165,8 @@ while IFS= read -r rel_path; do
   cp -a "$src" "$dst"
 done < "$MANIFEST_FILE"
 
+mkdir -p "$TARGET_DIR/storage/ip2region"
+
 ln -sfn "$BACKUP_DIR" "$BACKUP_BASE/latest"
 
 PHP_BIN=""
@@ -175,13 +177,6 @@ elif command -v php >/dev/null 2>&1; then
 fi
 
 if [ -n "$PHP_BIN" ]; then
-  (
-    cd "$TARGET_DIR"
-    "$PHP_BIN" artisan view:clear || true
-    "$PHP_BIN" artisan config:clear || true
-    "$PHP_BIN" artisan config:cache || true
-  )
-
   WEBMAN_PID="$(
     TARGET_DIR="$TARGET_DIR" "$PHP_BIN" <<'PHP' 2>/dev/null || true
 <?php
@@ -196,6 +191,31 @@ if ($pid) {
 }
 PHP
   )"
+
+  (
+    cd "$TARGET_DIR"
+    "$PHP_BIN" artisan optimize:clear || true
+    "$PHP_BIN" artisan route:clear || true
+    "$PHP_BIN" artisan view:clear || true
+    "$PHP_BIN" artisan config:clear || true
+    "$PHP_BIN" artisan cache:clear || true
+    "$PHP_BIN" artisan config:cache || true
+  )
+
+  if ! [[ "$WEBMAN_PID" =~ ^[0-9]+$ ]] && [ -d /proc ]; then
+    TARGET_REALPATH="$(cd "$TARGET_DIR" && pwd)"
+    WEBMAN_PID="$(
+      for proc in /proc/[0-9]*; do
+        [ -r "$proc/cmdline" ] || continue
+        cmd="$(tr '\0' ' ' < "$proc/cmdline" 2>/dev/null || true)"
+        [ "${cmd#*webman.php}" != "$cmd" ] || continue
+        cwd="$(readlink "$proc/cwd" 2>/dev/null || true)"
+        [ "$cwd" = "$TARGET_REALPATH" ] || continue
+        basename "$proc"
+        break
+      done
+    )"
+  fi
 
   if [[ "$WEBMAN_PID" =~ ^[0-9]+$ ]]; then
     RESTART_WEBMAN=1
@@ -224,9 +244,13 @@ PHP
     (
       cd "$TARGET_DIR"
       if [ -f webman.php ]; then
-        "$PHP_BIN" webman.php stop || true
+        WEBMAN_PHP=("$PHP_BIN")
+        if [ -f cli-php.ini ]; then
+          WEBMAN_PHP=("$PHP_BIN" -c cli-php.ini)
+        fi
+        "${WEBMAN_PHP[@]}" webman.php stop || true
         sleep 2
-        "$PHP_BIN" webman.php start -d || kill -USR1 "$WEBMAN_PID" || true
+        "${WEBMAN_PHP[@]}" webman.php start -d || kill -USR1 "$WEBMAN_PID" || true
       else
         kill -USR1 "$WEBMAN_PID" || true
       fi

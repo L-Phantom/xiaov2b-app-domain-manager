@@ -8,6 +8,7 @@ use App\Models\AppDomainGroup;
 use App\Models\Plan;
 use App\Models\ServerGroup;
 use App\Models\User;
+use App\Services\SubscribeMonitorService;
 use App\Utils\Helper;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Cache;
@@ -17,6 +18,8 @@ use Illuminate\Support\Facades\Schema;
 
 class AppDomainService
 {
+    protected static $riskSnapshots = [];
+
     protected const SUPPORTED_SERVER_TYPES = [
         'shadowsocks',
         'vmess',
@@ -176,6 +179,10 @@ class AppDomainService
     {
         $bindingPayload = $this->matchBindingPayload($user, $server);
         if ($bindingPayload) {
+            if (!empty($bindingPayload['hide_node'])) {
+                $server['app_domain_hidden'] = 1;
+                return $server;
+            }
             $server['host'] = $bindingPayload['domain'];
             if ((int) ($bindingPayload['port'] ?? 0) > 0) {
                 $server['port'] = (int) $bindingPayload['port'];
@@ -206,6 +213,81 @@ class AppDomainService
         }
 
         return $server;
+    }
+
+    public function applyBehaviorEntranceToServer($user, array $server): array
+    {
+        $bindingPayload = $this->matchBindingPayload($user, $server, true);
+        if (!$bindingPayload) {
+            return $server;
+        }
+
+        if (!empty($bindingPayload['hide_node'])) {
+            $server['app_domain_hidden'] = 1;
+            return $server;
+        }
+
+        $server['host'] = $bindingPayload['domain'];
+        if ((int) ($bindingPayload['port'] ?? 0) > 0) {
+            $server['port'] = (int) $bindingPayload['port'];
+        }
+
+        return $server;
+    }
+
+    public function previewDispatchForUserId(int $userId, int $limit = 12): array
+    {
+        if ($userId <= 0 || !class_exists(User::class)) {
+            return $this->emptyDispatchPreview('用户不存在');
+        }
+
+        $user = User::find($userId);
+        if (!$user) {
+            return $this->emptyDispatchPreview('用户不存在');
+        }
+
+        return $this->previewDispatchForUser($user, $limit);
+    }
+
+    public function previewDispatchForUser($user, int $limit = 12): array
+    {
+        $limit = max(1, min(50, $limit));
+        $config = $this->getConfig();
+        $snapshot = $this->riskSnapshotForUser($user);
+        $servers = (new ServerService())->getAvailableServers($user);
+        $rows = [];
+        $hidden = 0;
+        $changed = 0;
+
+        foreach ($servers as $server) {
+            if ((int) ($server['app_show'] ?? 1) !== 1) {
+                continue;
+            }
+
+            $decision = $this->previewServerDecision($user, $server);
+            if (!empty($decision['hidden'])) {
+                $hidden++;
+            }
+            if (($decision['action'] ?? 'none') !== 'none') {
+                $changed++;
+            }
+            if (count($rows) < $limit) {
+                $rows[] = $decision;
+            }
+        }
+
+        return [
+            'enabled' => (int) ($config['app_domain_rule_enable'] ?? 0) === 1,
+            'subscribe_url' => $this->buildSubscribeUrl((string) ($user->token ?? '')),
+            'risk_level' => $snapshot['risk_level'] ?? '无风险',
+            'risk_score' => (int) ($snapshot['risk_score'] ?? 0),
+            'disposition_status' => $snapshot['disposition']['status'] ?? 'none',
+            'total_nodes' => count($servers),
+            'changed_nodes' => $changed,
+            'hidden_nodes' => $hidden,
+            'preview_limit' => $limit,
+            'nodes' => $rows,
+        ];
     }
 
     public function getGroups(): array
@@ -244,6 +326,9 @@ class AppDomainService
             'domain' => $this->normalizeHost($data['domain'] ?? ''),
             'user_group_ids' => $this->normalizeIds($data['user_group_ids'] ?? []),
             'plan_ids' => $this->normalizeIds($data['plan_ids'] ?? []),
+            'risk_levels' => $this->normalizeRiskLevels($data['risk_levels'] ?? []),
+            'disposition_statuses' => $this->normalizeDispositionStatuses($data['disposition_statuses'] ?? []),
+            'hide_matched_nodes' => (int) ($data['hide_matched_nodes'] ?? 0),
             'remark' => trim((string) ($data['remark'] ?? '')),
         ];
 
@@ -445,6 +530,13 @@ class AppDomainService
             'user_groups' => class_exists(ServerGroup::class) && $this->tableExists('v2_server_group') ? ServerGroup::orderBy('id', 'ASC')->get(['id', 'name'])->toArray() : [],
             'plans' => class_exists(Plan::class) && $this->tableExists('v2_plan') ? Plan::orderBy('sort', 'ASC')->get(['id', 'name'])->toArray() : [],
             'nodes' => $this->getNodeOptions(),
+            'risk_levels' => SubscribeMonitorService::RISK_LEVELS,
+            'disposition_statuses' => array_map(function ($status) {
+                return [
+                    'id' => $status,
+                    'name' => $this->dispositionStatusLabel($status),
+                ];
+            }, SubscribeMonitorService::DISPOSITION_STATUSES),
             'rules_table_exists' => $this->rulesTableExists(),
             'groups_table_exists' => $this->groupsTableExists(),
             'bindings_table_exists' => $this->bindingsTableExists(),
@@ -605,11 +697,23 @@ class AppDomainService
         if (!$this->matchesScope($group->plan_ids, [(int) ($user->plan_id ?? 0)])) {
             return false;
         }
+        $riskLevels = is_array($group->risk_levels) ? $group->risk_levels : [];
+        $dispositionStatuses = is_array($group->disposition_statuses) ? $group->disposition_statuses : [];
+        if ($riskLevels || $dispositionStatuses) {
+            $snapshot = $this->riskSnapshotForUser($user);
+            if (!$this->matchesScope($riskLevels, [$snapshot['risk_level'] ?? '无风险'])) {
+                return false;
+            }
+            $status = $snapshot['disposition']['status'] ?? 'none';
+            if (!$this->matchesScope($dispositionStatuses, [$status])) {
+                return false;
+            }
+        }
 
         return true;
     }
 
-    protected function matchBindingPayload($user, array $server): ?array
+    protected function matchBindingPayload($user, array $server, bool $onlyBehaviorScoped = false): ?array
     {
         if ((int) config('v2board.app_domain_rule_enable', 0) !== 1 || !$this->groupsTableExists() || !$this->bindingsTableExists()) {
             return null;
@@ -633,7 +737,21 @@ class AppDomainService
             ->orderBy('id', 'ASC')
             ->get();
 
+        if (!$onlyBehaviorScoped) {
+            $groups = $groups->sort(function ($a, $b) {
+                $aBehavior = $this->groupHasBehaviorScope($a) ? 0 : 1;
+                $bBehavior = $this->groupHasBehaviorScope($b) ? 0 : 1;
+
+                return ($aBehavior <=> $bBehavior)
+                    ?: ((int) $a->sort <=> (int) $b->sort)
+                    ?: ((int) $a->id <=> (int) $b->id);
+            })->values();
+        }
+
         foreach ($groups as $group) {
+            if ($onlyBehaviorScoped && !$this->groupHasBehaviorScope($group)) {
+                continue;
+            }
             if (!$this->groupMatchesUser($group, $user) || $group->bindings->isEmpty()) {
                 continue;
             }
@@ -642,11 +760,21 @@ class AppDomainService
                 'domain' => $this->normalizeHost($group->domain),
                 'port' => $binding->port,
                 'group_id' => (int) $group->id,
+                'group_name' => $group->name,
                 'binding_id' => (int) $binding->id,
+                'hide_node' => (int) ($group->hide_matched_nodes ?? 0) === 1,
             ];
         }
 
         return null;
+    }
+
+    protected function groupHasBehaviorScope(AppDomainGroup $group): bool
+    {
+        $riskLevels = is_array($group->risk_levels) ? $group->risk_levels : [];
+        $dispositionStatuses = is_array($group->disposition_statuses) ? $group->disposition_statuses : [];
+
+        return !empty($riskLevels) || !empty($dispositionStatuses);
     }
 
     protected function matchesScope($scope, array $values): bool
@@ -690,6 +818,22 @@ class AppDomainService
         }, $items))));
     }
 
+    protected function normalizeRiskLevels($items): array
+    {
+        $items = $this->normalizeStrings($items);
+        return array_values(array_filter($items, function ($item) {
+            return in_array($item, SubscribeMonitorService::RISK_LEVELS, true);
+        }));
+    }
+
+    protected function normalizeDispositionStatuses($items): array
+    {
+        $items = $this->normalizeStrings($items);
+        return array_values(array_filter($items, function ($item) {
+            return in_array($item, SubscribeMonitorService::DISPOSITION_STATUSES, true);
+        }));
+    }
+
     protected function normalizePort($port): ?int
     {
         if ($port === null || $port === '') {
@@ -731,6 +875,115 @@ class AppDomainService
         }
 
         return User::where('token', $token)->first();
+    }
+
+    protected function riskSnapshotForUser($user): array
+    {
+        $userId = (int) ($user->id ?? 0);
+        if ($userId <= 0) {
+            return [
+                'risk_level' => '无风险',
+                'risk_score' => 0,
+                'disposition' => ['status' => 'none'],
+            ];
+        }
+        if (!isset(self::$riskSnapshots[$userId])) {
+            self::$riskSnapshots[$userId] = (new SubscribeMonitorService())->riskSnapshotForUser($user);
+        }
+        return self::$riskSnapshots[$userId];
+    }
+
+    protected function previewServerDecision($user, array $server): array
+    {
+        $originalHost = (string) ($server['host'] ?? '');
+        $originalPort = $server['port'] ?? ($server['mport'] ?? '');
+        $serverType = (string) ($server['type'] ?? ($server['protocol'] ?? ''));
+        $serverId = (int) ($server['id'] ?? 0);
+        $base = [
+            'server_id' => $serverId,
+            'server_type' => $serverType,
+            'name' => (string) ($server['name'] ?? ''),
+            'original_host' => $originalHost,
+            'original_port' => $originalPort,
+            'final_host' => $originalHost,
+            'final_port' => $originalPort,
+            'action' => 'none',
+            'action_label' => '保持原入口',
+            'group_id' => null,
+            'group_name' => null,
+            'rule_id' => null,
+            'rule_name' => null,
+            'hidden' => false,
+        ];
+
+        $bindingPayload = $this->matchBindingPayload($user, $server);
+        if ($bindingPayload) {
+            $base['action'] = !empty($bindingPayload['hide_node']) ? 'group_hidden' : 'group_binding';
+            $base['action_label'] = !empty($bindingPayload['hide_node']) ? '入口组隐藏节点' : '入口组替换';
+            $base['group_id'] = $bindingPayload['group_id'] ?? null;
+            $base['group_name'] = $bindingPayload['group_name'] ?? null;
+            $base['final_host'] = $bindingPayload['domain'] ?: $originalHost;
+            $base['final_port'] = (int) ($bindingPayload['port'] ?? 0) > 0 ? (int) $bindingPayload['port'] : $originalPort;
+            $base['hidden'] = !empty($bindingPayload['hide_node']);
+            return $base;
+        }
+
+        $rule = $this->matchRule($user, $server);
+        if ($rule && (int) $rule->replace_node_host === 1) {
+            $base['action'] = 'rule';
+            $base['action_label'] = '规则替换';
+            $base['rule_id'] = (int) $rule->id;
+            $base['rule_name'] = $rule->name;
+            $base['final_host'] = $this->normalizeHost($rule->domain) ?: $originalHost;
+            $base['final_port'] = (int) ($rule->port ?? 0) > 0 ? (int) $rule->port : $originalPort;
+            return $base;
+        }
+
+        if ((int) config('v2board.app_domain_rule_enable', 0) === 1 && $this->rulesTableExists()) {
+            return $base;
+        }
+
+        if ((int) ($server['app_domain_replace'] ?? 1) !== 1) {
+            return $base;
+        }
+
+        $replaceHost = $this->resolveGlobalReplaceHost();
+        if ($replaceHost !== '') {
+            $base['action'] = 'global';
+            $base['action_label'] = '全局替换';
+            $base['final_host'] = $replaceHost;
+        }
+
+        return $base;
+    }
+
+    protected function emptyDispatchPreview(string $reason): array
+    {
+        return [
+            'enabled' => false,
+            'reason' => $reason,
+            'subscribe_url' => '',
+            'risk_level' => '无风险',
+            'risk_score' => 0,
+            'disposition_status' => 'none',
+            'total_nodes' => 0,
+            'changed_nodes' => 0,
+            'hidden_nodes' => 0,
+            'preview_limit' => 0,
+            'nodes' => [],
+        ];
+    }
+
+    protected function dispositionStatusLabel(string $status): string
+    {
+        return [
+            'none' => '未处置',
+            'watch' => '加入观察',
+            'handled' => '已处理',
+            'whitelist' => '白名单',
+            'freeze_suggested' => '建议冻结',
+            'blacklist_suggested' => '建议拉黑',
+        ][$status] ?? $status;
     }
 
     protected function getNodeOptions(): array

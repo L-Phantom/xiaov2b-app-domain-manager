@@ -230,7 +230,15 @@ class ServerService
         );
         $tmp = array_column($servers, 'sort');
         array_multisort($tmp, SORT_ASC, $servers);
-        return array_map(function ($server) {
+        $appDomainService = new AppDomainService();
+        $servers = array_map(function ($server) use ($user, $appDomainService) {
+            return $appDomainService->applyBehaviorEntranceToServer($user, $server);
+        }, $servers);
+        $servers = array_filter($servers, function ($server) {
+            return (int) ($server['app_domain_hidden'] ?? 0) !== 1;
+        });
+
+        return array_values(array_map(function ($server) {
             if (strpos($server['port'], '-')) {
                 $server['mport'] = (string)$server['port'];
             } else {
@@ -239,7 +247,7 @@ class ServerService
             $server['is_online'] = (time() - 300 > $server['last_check_at']) ? 0 : 1;
             $server['cache_key'] = "{$server['type']}-{$server['id']}-{$server['updated_at']}-{$server['is_online']}";
             return $server;
-        }, $servers);
+        }, $servers));
     }
 
     public function getAvailableAppServers(User $user)
@@ -252,6 +260,9 @@ class ServerService
         $servers = array_map(function ($server) use ($user, $appDomainService) {
             return $appDomainService->applyToServer($user, $server);
         }, $servers);
+        $servers = array_filter($servers, function ($server) {
+            return (int) ($server['app_domain_hidden'] ?? 0) !== 1;
+        });
 
         return array_values($servers);
     }

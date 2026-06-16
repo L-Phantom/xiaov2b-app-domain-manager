@@ -21039,11 +21039,18 @@
                             className: "nav-main-link-icon si si-layers"
                         })
                     }, {
-                        title: "\u4e2d\u8f6c\u57df\u540d\u5206\u53d1",
+                        title: "\u57df\u540d\u5206\u53d1",
                         type: "item",
                         href: "/server/app-domain",
                         icon: o.a.createElement("i", {
                             className: "nav-main-link-icon si si-globe"
+                        })
+                    }, {
+                        title: "\u884c\u4e3a\u76d1\u7ba1",
+                        type: "item",
+                        href: "/server/subscribe-monitor",
+                        icon: o.a.createElement("i", {
+                            className: "nav-main-link-icon si si-eye"
                         })
                     }, {
                         title: "\u6743\u9650\u7ec4\u7ba1\u7406",
@@ -82359,6 +82366,10 @@
             exact: !0,
             component: n("uzXD").default
         }, {
+            path: "/server/subscribe-monitor",
+            exact: !0,
+            component: n("uzXD").default
+        }, {
             path: "/server/route",
             exact: !0,
             component: n("wtkT").default
@@ -106643,7 +106654,7 @@
                 }
             }
             componentDidMount() {
-                if (this.props.location && ("/server/app-domain-plugin" === this.props.location.pathname || "/server/app-domain" === this.props.location.pathname))
+                if (this.props.location && ("/server/app-domain-plugin" === this.props.location.pathname || "/server/app-domain" === this.props.location.pathname || "/server/subscribe-monitor" === this.props.location.pathname))
                     return;
                 this.props.dispatch({
                     type: "serverManage/getNodes"

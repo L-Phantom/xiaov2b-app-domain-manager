@@ -48,7 +48,7 @@ if [[ -n "$extra_files" ]]; then
 fi
 
 echo "=== Syntax checks ==="
-bash -n install.sh verify.sh uninstall.sh scripts/package_release.sh
+bash -n install.sh verify.sh uninstall.sh scripts/package_release.sh scripts/update_ip2region_xdb.sh
 PHP_BIN=""
 if command -v php82 >/dev/null 2>&1; then
   PHP_BIN="php82"

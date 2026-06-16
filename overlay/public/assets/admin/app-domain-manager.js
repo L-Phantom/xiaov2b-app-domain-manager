@@ -100,6 +100,9 @@
       domain: rule.domain || "",
       user_group_ids: Array.isArray(rule.user_group_ids) ? rule.user_group_ids : [],
       plan_ids: Array.isArray(rule.plan_ids) ? rule.plan_ids : [],
+      risk_levels: Array.isArray(rule.risk_levels) ? rule.risk_levels : [],
+      disposition_statuses: Array.isArray(rule.disposition_statuses) ? rule.disposition_statuses : [],
+      hide_matched_nodes: Number(rule.hide_matched_nodes || 0),
       remark: rule.remark || "",
       bindings: Array.isArray(rule.bindings) ? rule.bindings.map(normalizeBinding) : []
     };
@@ -112,12 +115,25 @@
     });
   }
 
+  function blacklistEntranceRule() {
+    return normalizeRule({
+      name: "建议拉黑专属入口",
+      enable: 1,
+      sort: (state.rules || []).length + 1,
+      domain: "",
+      risk_levels: [],
+      disposition_statuses: ["blacklist_suggested"],
+      hide_matched_nodes: 0,
+      remark: "行为监管标记为建议拉黑后命中；在此绑定要下发的专属入口节点。"
+    });
+  }
+
   function mountStyle() {
     if (styleMounted) return;
     styleMounted = true;
     var style = document.createElement("style");
     style.textContent = [
-      ".adm-page{padding:0 24px 24px;max-width:1320px;}",
+      ".adm-page{width:100%;max-width:none;padding:0 32px 32px;box-sizing:border-box;}",
       ".adm-native-block{background:#fff;}",
       ".adm-page-head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:0 0 14px;flex-wrap:wrap;}",
       ".adm-tabs{display:flex;align-items:center;gap:30px;border-bottom:1px solid #e8e8e8;margin-bottom:0;padding:0 20px;}",
@@ -131,8 +147,9 @@
       ".adm-setting-title{font-weight:600;color:#2f3542;margin-bottom:5px;}",
       ".adm-setting-desc{font-size:12px;color:#666;line-height:1.6;}",
       ".adm-setting-control{width:50%;min-width:280px;text-align:right;}",
+      ".adm-help{font-size:12px;color:#7b8494;line-height:1.6;}",
       ".adm-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap;}",
-      ".adm-grid{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:16px;}",
+      ".adm-grid{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:16px;width:100%;}",
       ".adm-span-2{grid-column:span 2}.adm-span-3{grid-column:span 3}.adm-span-4{grid-column:span 4}.adm-span-6{grid-column:span 6}.adm-span-8{grid-column:span 8}.adm-span-9{grid-column:span 9}.adm-span-12{grid-column:span 12}",
       ".adm-block{background:#fff;border:0;margin-bottom:0;}",
       ".adm-block-header{padding:16px 20px;border-bottom:1px solid #eef0f4;display:flex;align-items:center;justify-content:space-between;gap:12px;}",
@@ -157,25 +174,39 @@
       ".adm-status.success{color:#1c7c4c}.adm-status.error{color:#b42318}",
       ".adm-preview{font-size:13px;line-height:1.7;color:#4b5563;background:#f7f8fb;border:1px solid #edf0f5;border-radius:4px;padding:10px 12px;word-break:break-all;min-height:38px;text-align:left;}",
       ".adm-table-tools{padding:16px 20px;border-bottom:1px solid #eef0f4;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;}",
+      ".adm-rule-guide{padding:12px 20px;border-bottom:1px solid #eef0f4;background:#fbfcfe;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;}",
+      ".adm-rule-guide-main{min-width:260px;}",
+      ".adm-rule-guide-title{font-size:13px;font-weight:600;color:#354052;margin-bottom:2px;}",
+      ".adm-section{border-top:1px solid #eef0f4;}",
+      ".adm-section-head{height:44px;padding:0 20px;background:#fbfcfe;display:flex;align-items:center;justify-content:space-between;gap:12px;}",
+      ".adm-section-title{font-size:13px;font-weight:600;color:#354052;}",
+      ".adm-section-meta{font-size:12px;color:#8a93a3;}",
       ".adm-table-wrap{overflow:auto;border:0;border-radius:0;}",
-      ".adm-table{width:100%;border-collapse:collapse;background:#fff;min-width:980px;}",
+      ".adm-table{width:100%;border-collapse:collapse;background:#fff;min-width:1260px;table-layout:fixed;}",
       ".adm-table th{height:42px;background:#f8f9fc;color:#566070;font-size:12px;font-weight:600;text-align:left;padding:0 12px;border-bottom:1px solid #eef0f4;white-space:nowrap;}",
       ".adm-table td{font-size:13px;color:#2f3542;padding:12px;border-bottom:1px solid #f0f2f5;vertical-align:middle;}",
       ".adm-table tr:last-child td{border-bottom:0;}",
-      ".adm-rule-name{font-weight:600;color:#2f3542;line-height:1.5;}",
-      ".adm-rule-remark{font-size:13px;color:#7b8494;line-height:1.5;margin-top:2px;}",
-      ".adm-rule-domain{display:inline-block;max-width:420px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#d9488a;font-size:12px;vertical-align:middle;}",
+      ".adm-table th:nth-child(1),.adm-table td:nth-child(1){width:46px;}",
+      ".adm-table th:nth-child(2),.adm-table td:nth-child(2){width:230px;}",
+      ".adm-table th:nth-child(3),.adm-table td:nth-child(3){width:96px;}",
+      ".adm-table th:nth-child(4),.adm-table td:nth-child(4){width:260px;}",
+      ".adm-table th:nth-child(5),.adm-table td:nth-child(5){width:310px;}",
+      ".adm-table th:nth-child(6),.adm-table td:nth-child(6){width:150px;}",
+      ".adm-table th:nth-child(7),.adm-table td:nth-child(7){width:132px;}",
+      ".adm-rule-name{font-weight:600;color:#2f3542;line-height:1.5;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}",
+      ".adm-rule-remark{font-size:13px;color:#7b8494;line-height:1.5;margin-top:2px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}",
+      ".adm-rule-domain{display:inline-block;max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#d9488a;font-size:12px;vertical-align:middle;}",
       ".adm-scope-cell{display:flex;flex-direction:column;gap:8px;align-items:flex-start;justify-content:center;min-height:46px;}",
-      ".adm-scope-line{display:flex;gap:6px;flex-wrap:wrap;align-items:center;}",
-      ".adm-node-preview{display:flex;gap:6px;flex-wrap:wrap;align-items:center;max-width:720px;}",
       ".adm-node-chip{display:inline-flex;align-items:center;max-width:210px;height:24px;padding:0 8px;border-radius:4px;background:#f4f6f9;color:#626c7c;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}",
       ".adm-node-toggle{height:24px;border:0;background:transparent;color:#1890ff;padding:0 2px;font-size:12px;cursor:pointer;}",
       ".adm-node-toggle:hover{color:#096dd9;text-decoration:underline;}",
-      ".adm-rule-detail-row td{background:#fbfcfe;padding:0 20px 18px 132px!important;vertical-align:top!important;}",
+      ".adm-scope-summary{display:flex;align-items:center;gap:6px;flex-wrap:wrap;max-width:100%;max-height:52px;overflow:hidden;}",
+      ".adm-scope-more{font-size:12px;color:#8a93a3;}",
+      ".adm-rule-detail-row td{background:#fbfcfe;padding:0 20px 18px 96px!important;vertical-align:top!important;}",
       ".adm-node-detail{width:100%;border:1px solid #edf0f5;background:#fff;border-radius:4px;}",
       ".adm-node-detail-head{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 12px;border-bottom:1px solid #edf0f5;color:#606a7a;font-size:12px;}",
       ".adm-node-detail-body{display:flex;flex-direction:column;}",
-      ".adm-node-map{display:grid;grid-template-columns:minmax(160px,1fr) minmax(220px,1.2fr) 28px minmax(220px,1.2fr);gap:10px;align-items:center;padding:10px 12px;border-bottom:1px solid #f0f2f5;font-size:12px;color:#5f6978;}",
+      ".adm-node-map{display:grid;grid-template-columns:minmax(180px,1fr) minmax(260px,1.25fr) 32px minmax(260px,1.25fr);gap:12px;align-items:center;padding:10px 12px;border-bottom:1px solid #f0f2f5;font-size:12px;color:#5f6978;}",
       ".adm-node-map:last-child{border-bottom:0;}",
       ".adm-node-map-name{font-weight:500;color:#3f4652;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}",
       ".adm-node-map-code{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#606a7a;background:#fff;border:1px solid #eef1f5;border-radius:4px;padding:4px 6px;}",
@@ -183,7 +214,7 @@
       ".adm-node-detail-edit{height:26px;padding:0 8px;font-size:12px;}",
       ".adm-badge{display:inline-flex;align-items:center;height:22px;padding:0 8px;border-radius:4px;font-size:12px;background:#eef2ff;color:#3150b7;white-space:nowrap;}",
       ".adm-badge.gray{background:#f1f3f5;color:#596273}.adm-badge.green{background:#e9f8ef;color:#137447}.adm-badge.red{background:#fff1f0;color:#b42318}",
-      ".adm-tags{display:flex;gap:6px;flex-wrap:wrap;max-width:360px;}",
+      ".adm-tags{display:flex;gap:6px;flex-wrap:wrap;max-width:min(520px,34vw);}",
       ".adm-btn{height:32px;border:1px solid #d8dde8;border-radius:4px;background:#fff;color:#354052;padding:0 10px;font-size:13px;cursor:pointer;display:inline-flex;align-items:center;gap:6px;justify-content:center;}",
       ".adm-btn:hover{border-color:#5c80ff;color:#3150b7}",
       ".adm-btn-primary{background:#5c80ff;border-color:#5c80ff;color:#fff}",
@@ -193,7 +224,7 @@
       ".adm-btn[disabled]{opacity:.55;cursor:not-allowed}",
       ".adm-empty{padding:38px 12px;text-align:center;color:#8a93a3;font-size:13px;}",
       ".adm-modal-mask{position:fixed;inset:0;background:rgba(17,24,39,.42);z-index:9998;display:flex;align-items:center;justify-content:center;padding:24px;}",
-      ".adm-modal{width:min(980px,100%);max-height:calc(100vh - 48px);overflow:auto;background:#fff;border-radius:8px;box-shadow:0 24px 60px rgba(15,23,42,.22);}",
+      ".adm-modal{width:min(1120px,100%);max-height:calc(100vh - 48px);overflow:auto;background:#fff;border-radius:8px;box-shadow:0 24px 60px rgba(15,23,42,.22);}",
       ".adm-modal-head{height:56px;padding:0 20px;border-bottom:1px solid #eef0f4;display:flex;align-items:center;justify-content:space-between;}",
       ".adm-modal-title{font-size:15px;font-weight:600;color:#2f3542;}",
       ".adm-modal-body{padding:20px;}",
@@ -203,13 +234,14 @@
       ".adm-check input{margin:0}",
       ".adm-node-tools{display:flex;align-items:center;gap:8px;margin:8px 0 10px;flex-wrap:wrap;}",
       ".adm-node-table-wrap{max-height:320px;overflow:auto;border:1px solid #eef0f4;border-radius:6px;background:#fff;}",
-      ".adm-node-table{width:100%;border-collapse:collapse;min-width:820px;}",
+      ".adm-node-table{width:100%;border-collapse:collapse;min-width:980px;}",
       ".adm-node-table th{height:36px;background:#f8f9fc;color:#566070;font-size:12px;font-weight:600;text-align:left;padding:0 10px;border-bottom:1px solid #eef0f4;white-space:nowrap;}",
       ".adm-node-table td{font-size:13px;color:#2f3542;padding:9px 10px;border-bottom:1px solid #f0f2f5;vertical-align:middle;}",
       ".adm-node-table tr:last-child td{border-bottom:0}",
       ".adm-node-table code{font-size:12px;color:#4b5563;}",
       ".adm-port-input{width:92px;height:30px}",
-      "@media(max-width:900px){.adm-page{padding:0 12px 18px}.adm-tabs{gap:18px;overflow:auto}.adm-setting-row{display:block;padding:16px}.adm-setting-control{width:100%;min-width:0;text-align:left;margin-top:12px}.adm-setting-control .adm-switch-line{justify-content:flex-start}.adm-grid{display:block}.adm-span-2,.adm-span-3,.adm-span-4,.adm-span-6,.adm-span-8,.adm-span-9,.adm-span-12{grid-column:auto}.adm-block-body{padding:0}.adm-actions{width:100%}.adm-form-control.adm-filter{width:100%!important}}"
+      "@media(min-width:1600px){.adm-page{padding-right:40px}.adm-setting-row{padding:22px 24px}.adm-block-header{padding-left:24px;padding-right:24px}.adm-table-tools{padding-left:24px;padding-right:24px}}",
+      "@media(max-width:900px){.adm-page{padding:0 12px 18px}.adm-tabs{gap:18px;overflow:auto}.adm-setting-row{display:block;padding:16px}.adm-setting-control{width:100%;min-width:0;text-align:left;margin-top:12px}.adm-setting-control .adm-switch-line{justify-content:flex-start}.adm-grid{display:block}.adm-span-2,.adm-span-3,.adm-span-4,.adm-span-6,.adm-span-8,.adm-span-9,.adm-span-12{grid-column:auto}.adm-block-body{padding:0}.adm-actions{width:100%}.adm-form-control.adm-filter{width:100%!important}.adm-scope-summary{max-width:none}.adm-rule-detail-row td{padding:0 12px 14px!important}.adm-node-map{grid-template-columns:1fr;gap:6px}.adm-node-map-arrow{text-align:left}}"
     ].join("\n");
     document.head.appendChild(style);
   }
@@ -222,7 +254,7 @@
 
   function setHeaderTitle() {
     var title = document.querySelector(".v2board-container-title");
-    if (title) title.textContent = "中转域名分发";
+    if (title) title.textContent = "域名分发";
   }
 
   function request(method, path, payload) {
@@ -329,10 +361,28 @@
     ids = Array.isArray(ids) ? ids : [];
     if (!ids.length) return "全部";
     var names = ids.map(function (id) {
-      var found = (list || []).find(function (item) { return Number(item.id) === Number(id); });
+      var idText = String(id);
+      var found = (list || []).find(function (item) {
+        var itemId = item && item.id != null ? String(item.id) : "";
+        var itemValue = item && item.value != null ? String(item.value) : "";
+        return itemId === idText || itemValue === idText;
+      });
       return found ? found.name : id;
     });
     return names.join(" / ");
+  }
+
+  function selectedNames(ids, list) {
+    var text = selectedText(ids, list);
+    return text === "全部" ? [] : text.split(" / ");
+  }
+
+  function isBehaviorRule(rule) {
+    return !!((rule.risk_levels || []).length || (rule.disposition_statuses || []).length);
+  }
+
+  function ruleSection(rule) {
+    return isBehaviorRule(rule) ? "behavior" : "normal";
   }
 
   function nodeSummary(rule) {
@@ -367,7 +417,7 @@
   function nodeDetail(rule, mappings) {
     if (!mappings.length) return "";
     return '<div class="adm-node-detail">' +
-      '<div class="adm-node-detail-head"><span>入口映射预览</span><div class="adm-actions"><button class="adm-node-toggle" type="button" data-rule-collapse="' + escapeHtml(rule.id) + '">收起</button><button class="adm-btn adm-btn-text adm-node-detail-edit" type="button" data-rule-edit-inline="' + escapeHtml(rule.id) + '">' + icon("pencil") + '编辑</button></div></div>' +
+      '<div class="adm-node-detail-head"><span>入口映射预览</span><div class="adm-actions"><button class="adm-node-toggle" type="button" data-rule-toggle="' + escapeHtml(rule.id) + '">收起映射</button><button class="adm-btn adm-btn-text adm-node-detail-edit" type="button" data-rule-edit-inline="' + escapeHtml(rule.id) + '">' + icon("pencil") + '编辑</button></div></div>' +
       '<div class="adm-node-detail-body">' + mappings.map(function (item) {
         return '<div class="adm-node-map">' +
           '<div class="adm-node-map-name" title="' + escapeHtml(item.name) + '">' + escapeHtml(item.name) + '</div>' +
@@ -380,30 +430,54 @@
 
   function scopeTags(rule) {
     var options = state.options || {};
-    var mappings = nodeMappings(rule);
-    var labels = mappings.map(function (item) { return item.label; });
-    var visible = labels.slice(0, 3);
-    var remain = Math.max(labels.length - visible.length, 0);
-    var nodes = labels.length
-      ? '<div class="adm-node-preview">' + visible.map(function (label) {
-          return '<span class="adm-node-chip" title="' + escapeHtml(label) + '">' + escapeHtml(label) + '</span>';
-        }).join("") + (remain > 0
-          ? '<button class="adm-node-toggle" type="button" data-rule-expand="' + escapeHtml(rule.id) + '">展开 ' + remain + ' 个</button>'
-          : (labels.length ? '<button class="adm-node-toggle" type="button" data-rule-expand="' + escapeHtml(rule.id) + '">查看映射</button>' : '')) + '</div>'
-      : '<div class="adm-node-preview">' + tag("节点 未绑定", "gray") + '</div>';
-    return '<div class="adm-scope-cell">' +
-      '<div class="adm-scope-line">' +
-        tag("组 " + selectedText(rule.user_group_ids, options.user_groups), "gray") +
-        tag("套餐 " + selectedText(rule.plan_ids, options.plans), "gray") +
-      '</div>' +
-      nodes +
+    var riskNames = selectedNames(rule.risk_levels, (options.risk_levels || []).map(function (name) { return { id: name, name: name }; }));
+    var dispositionNames = selectedNames(rule.disposition_statuses, options.disposition_statuses);
+    var groupNames = selectedNames(rule.user_group_ids, options.user_groups);
+    var planNames = selectedNames(rule.plan_ids, options.plans);
+    var isBlacklistEntrance = (rule.disposition_statuses || []).indexOf("blacklist_suggested") !== -1;
+    var primary = [];
+    var extra = 0;
+    var title = [
+      "用户组: " + (groupNames.length ? groupNames.join(" / ") : "全部"),
+      "套餐: " + (planNames.length ? planNames.join(" / ") : "全部"),
+      "风险: " + (riskNames.length ? riskNames.join(" / ") : "全部"),
+      "处置: " + (dispositionNames.length ? dispositionNames.join(" / ") : "全部")
+    ].join("\n");
+
+    if (dispositionNames.length) {
+      primary.push(tag("处置 " + dispositionNames.slice(0, 1).join(""), isBlacklistEntrance ? "red" : "gray"));
+      extra += Math.max(dispositionNames.length - 1, 0);
+    }
+    if (riskNames.length) {
+      primary.push(tag("风险 " + riskNames.slice(0, 1).join(""), "gray"));
+      extra += Math.max(riskNames.length - 1, 0);
+    }
+    if (!dispositionNames.length && !riskNames.length) {
+      primary.push(tag("全部行为", "gray"));
+    }
+    if (planNames.length) {
+      primary.push(tag("套餐 " + planNames.slice(0, 1).join(""), "gray"));
+      extra += Math.max(planNames.length - 1, 0);
+    }
+    if (groupNames.length) {
+      primary.push(tag("组 " + groupNames.slice(0, 1).join(""), "gray"));
+      extra += Math.max(groupNames.length - 1, 0);
+    }
+    if (Number(rule.hide_matched_nodes || 0) === 1) {
+      primary.push(tag("隐藏节点", "red"));
+    }
+
+    return '<div class="adm-scope-summary" title="' + escapeHtml(title) + '">' +
+      primary.join("") +
+      (extra > 0 ? '<span class="adm-scope-more">+' + escapeHtml(extra) + '</span>' : '') +
       '</div>';
   }
 
-  function filteredRules() {
+  function filteredRules(section) {
     var q = String(state.filter || "").trim().toLowerCase();
     var groupId = String(state.groupFilter || "");
     return (state.rules || []).filter(function (rule) {
+      if (section && ruleSection(rule) !== section) return false;
       if (q && [rule.name, rule.domain, rule.remark, nodeSummary(rule)].join(" ").toLowerCase().indexOf(q) === -1) return false;
       if (groupId && rule.user_group_ids.length && rule.user_group_ids.map(String).indexOf(groupId) === -1) return false;
       if (groupId && !rule.user_group_ids.length) return true;
@@ -444,20 +518,28 @@
     ].join("\n");
   }
 
-  function renderRuleRows() {
-    var rules = filteredRules();
+  function mappingToggle(rule, labels, expanded) {
+    if (!labels.length) return tag("未绑定", "gray");
+    return '<button class="adm-node-toggle" type="button" data-rule-toggle="' + escapeHtml(rule.id) + '">' +
+      (expanded ? "收起映射" : "查看映射") +
+      '</button>';
+  }
+
+  function renderRuleRows(section) {
+    var rules = filteredRules(section);
     if (!rules.length) {
-      return '<tr><td colspan="7"><div class="adm-empty">暂无规则</div></td></tr>';
+      return '<tr><td colspan="7"><div class="adm-empty">暂无入口组</div></td></tr>';
     }
     return rules.map(function (rule, index) {
       var expanded = !!state.expandedRules[String(rule.id)];
+      var labels = nodeLabels(rule);
       var row = '<tr data-rule-id="' + escapeHtml(rule.id) + '">' +
         '<td>' + escapeHtml(rule.sort || index + 1) + '</td>' +
         '<td><div class="adm-rule-name">' + escapeHtml(rule.name) + '</div>' + (rule.remark ? '<div class="adm-rule-remark">' + escapeHtml(rule.remark) + '</div>' : '') + '</td>' +
         '<td><div class="adm-switch-line">' + switchHtml("adm_rule_enable_" + rule.id, rule.enable) + '<span class="adm-status">' + (rule.enable ? "开启" : "关闭") + '</span></div></td>' +
         '<td><span class="adm-rule-domain" title="' + escapeHtml(rule.domain) + '">' + escapeHtml(rule.domain) + '</span></td>' +
         '<td>' + scopeTags(rule) + '</td>' +
-        '<td>' + tag((rule.bindings || []).length + " 个节点", "green") + '</td>' +
+        '<td>' + tag((rule.bindings || []).length + " 个节点", "green") + ' ' + mappingToggle(rule, labels, expanded) + '</td>' +
         '<td><button class="adm-btn adm-rule-edit">' + icon("pencil") + '编辑</button> <button class="adm-btn adm-btn-danger adm-rule-drop">' + icon("trash") + '删除</button></td>' +
       '</tr>';
       if (expanded) {
@@ -465,6 +547,21 @@
       }
       return row;
     }).join("");
+  }
+
+  function renderRuleGuide() {
+    return '<div class="adm-rule-guide">' +
+      '<div class="adm-rule-guide-main"><div class="adm-rule-guide-title">黑名单用户专属入口</div>' +
+      '<div class="adm-help">行为监管里把账号标记为“建议拉黑”后，可在这里用入口组给这部分用户下发独立域名和端口；未标记用户不会命中。</div></div>' +
+      '<button class="adm-btn" id="adm-rule-blacklist-template" type="button">' + icon("plus") + '创建黑名单入口组</button>' +
+    '</div>';
+  }
+
+  function renderRuleSection(key, title, description) {
+    return '<div class="adm-section" data-rule-section="' + escapeHtml(key) + '">' +
+      '<div class="adm-section-head"><div><div class="adm-section-title">' + escapeHtml(title) + '</div><div class="adm-section-meta">' + escapeHtml(description) + '</div></div><div class="adm-section-meta">' + filteredRules(key).length + ' 条</div></div>' +
+      '<div class="adm-table-wrap"><table class="adm-table"><thead><tr><th>排序</th><th>规则</th><th>状态</th><th>入口域名</th><th>匹配摘要</th><th>绑定</th><th>操作</th></tr></thead><tbody>' + renderRuleRows(key) + '</tbody></table></div>' +
+    '</div>';
   }
 
   function renderGroupOptions() {
@@ -531,6 +628,9 @@
       '      <div class="adm-span-12"><div class="adm-modal-switches">' + switchInline("启用", "adm_rule_enable_input", rule.enable) + '</div></div>',
       '      <div class="adm-span-12"><label class="adm-form-label">用户组</label>' + renderCheckboxes("adm_rule_groups", options.user_groups || [], rule.user_group_ids) + '</div>',
       '      <div class="adm-span-12"><label class="adm-form-label">套餐</label>' + renderCheckboxes("adm_rule_plans", options.plans || [], rule.plan_ids) + '</div>',
+      '      <div class="adm-span-12"><label class="adm-form-label">风险等级</label>' + renderCheckboxes("adm_rule_risk_levels", (options.risk_levels || []).map(function (name) { return { id: name, name: name }; }), rule.risk_levels) + '</div>',
+      '      <div class="adm-span-12"><label class="adm-form-label">处置状态</label>' + renderCheckboxes("adm_rule_dispositions", options.disposition_statuses || [], rule.disposition_statuses) + '</div>',
+      '      <div class="adm-span-12"><div class="adm-modal-switches">' + switchInline("命中后隐藏绑定节点", "adm_rule_hide_nodes", rule.hide_matched_nodes) + '<span class="adm-help">用于极危险/隔离策略，不向命中的用户下发这些敏感节点</span></div></div>',
       '      <div class="adm-span-12"><label class="adm-form-label">节点入口</label>' + renderNodeBindings(rule) + '</div>',
       '    </div></div>',
       '    <div class="adm-modal-foot"><button class="adm-btn" id="adm-modal-cancel">取消</button><button class="adm-btn adm-btn-primary" id="adm-rule-save">' + icon("check") + '保存</button></div>',
@@ -553,8 +653,10 @@
       '    <div class="adm-tabs"><button class="adm-tab ' + (activeTab === "basic" ? "active" : "") + '" data-adm-tab="basic">基础</button><button class="adm-tab ' + (activeTab === "rules" ? "active" : "") + '" data-adm-tab="rules">入口规则</button><button class="adm-tab ' + (activeTab === "api" ? "active" : "") + '" data-adm-tab="api">API 域名池</button></div>',
       '    <div class="adm-tab-panel ' + (activeTab === "basic" ? "active" : "") + '" data-adm-panel="basic">' + renderConfig(config) + '</div>',
       '    <div class="adm-tab-panel ' + (activeTab === "rules" ? "active" : "") + '" data-adm-panel="rules">',
+      renderRuleGuide(),
       '      <div class="adm-table-tools"><div class="adm-actions"><input class="adm-form-control adm-filter" style="width:220px" id="adm-rule-filter" value="' + escapeHtml(state.filter) + '" placeholder="搜索规则"><select class="adm-form-control adm-filter" style="width:160px" id="adm-group-filter">' + renderGroupOptions() + '</select></div><button class="adm-btn adm-btn-primary" id="adm-rule-add">' + icon("plus") + '添加规则</button></div>',
-      '      <div class="adm-table-wrap"><table class="adm-table"><thead><tr><th>排序</th><th>规则</th><th>状态</th><th>入口域名</th><th>匹配对象</th><th>绑定</th><th>操作</th></tr></thead><tbody>' + renderRuleRows() + '</tbody></table></div>',
+      renderRuleSection("behavior", "行为处置入口", "按行为监管风险等级或处置状态命中，可作用于普通订阅和 App 订阅。"),
+      renderRuleSection("normal", "普通入口规则", "不带风险/处置条件，仅用于常规 App 入口分发。"),
       '    </div>',
       '    <div class="adm-tab-panel ' + (activeTab === "api" ? "active" : "") + '" data-adm-panel="api">' + renderApiConfig(config) + '</div>',
       '  </div>',
@@ -581,6 +683,12 @@
     return Array.prototype.slice.call(document.querySelectorAll('input[name="' + name + '"]:checked')).map(function (input) {
       return Number(input.value);
     }).filter(function (id) { return id > 0; });
+  }
+
+  function selectedRawValues(name) {
+    return Array.prototype.slice.call(document.querySelectorAll('input[name="' + name + '"]:checked')).map(function (input) {
+      return String(input.value || "").trim();
+    }).filter(Boolean);
   }
 
   function collectConfig(readDom) {
@@ -612,6 +720,9 @@
       domain: normalizeHost((document.getElementById("adm_rule_domain") || {}).value || ""),
       user_group_ids: selectedValues("adm_rule_groups"),
       plan_ids: selectedValues("adm_rule_plans"),
+      risk_levels: selectedRawValues("adm_rule_risk_levels"),
+      disposition_statuses: selectedRawValues("adm_rule_dispositions"),
+      hide_matched_nodes: checked("adm_rule_hide_nodes"),
       remark: (document.getElementById("adm_rule_remark") || {}).value || ""
     };
   }
@@ -692,6 +803,12 @@
     if (groupFilter) groupFilter.addEventListener("change", function () { state.groupFilter = groupFilter.value; refreshRuleTable(); });
     var add = document.getElementById("adm-rule-add");
     if (add) add.addEventListener("click", function () { state.modalRule = emptyRule(); renderPage(); });
+    var blacklistTemplate = document.getElementById("adm-rule-blacklist-template");
+    if (blacklistTemplate) blacklistTemplate.addEventListener("click", function () {
+      state.modalRule = blacklistEntranceRule();
+      renderPage();
+      setStatus("请填写专属入口域名，并选择需要隔离下发的节点", "success");
+    });
     bindRuleRows();
     var close = document.getElementById("adm-modal-close");
     var cancel = document.getElementById("adm-modal-cancel");
@@ -703,9 +820,12 @@
   }
 
   function refreshRuleTable() {
-    var tbody = document.querySelector(".adm-table tbody");
-    if (!tbody) return;
-    tbody.innerHTML = renderRuleRows();
+    var panel = document.querySelector('[data-adm-panel="rules"]');
+    if (!panel) return;
+    var behaviorSection = panel.querySelector('[data-rule-section="behavior"]');
+    var normalSection = panel.querySelector('[data-rule-section="normal"]');
+    if (behaviorSection) behaviorSection.outerHTML = renderRuleSection("behavior", "行为处置入口", "按行为监管风险等级或处置状态命中，可作用于普通订阅和 App 订阅。");
+    if (normalSection) normalSection.outerHTML = renderRuleSection("normal", "普通入口规则", "不带风险/处置条件，仅用于常规 App 入口分发。");
     bindRuleRows();
   }
 
@@ -720,15 +840,14 @@
       if (drop) drop.addEventListener("click", function () { dropRule(rule); });
       if (enable) enable.addEventListener("change", function () { saveRuleEnable(rule, enable.checked ? 1 : 0); });
     });
-    Array.prototype.slice.call(document.querySelectorAll("[data-rule-expand]")).forEach(function (button) {
+    Array.prototype.slice.call(document.querySelectorAll("[data-rule-toggle]")).forEach(function (button) {
       button.addEventListener("click", function () {
-        state.expandedRules[String(button.getAttribute("data-rule-expand"))] = true;
-        refreshRuleTable();
-      });
-    });
-    Array.prototype.slice.call(document.querySelectorAll("[data-rule-collapse]")).forEach(function (button) {
-      button.addEventListener("click", function () {
-        delete state.expandedRules[String(button.getAttribute("data-rule-collapse"))];
+        var id = String(button.getAttribute("data-rule-toggle"));
+        if (state.expandedRules[id]) {
+          delete state.expandedRules[id];
+        } else {
+          state.expandedRules[id] = true;
+        }
         refreshRuleTable();
       });
     });
@@ -831,6 +950,9 @@
       domain: rule.domain,
       user_group_ids: rule.user_group_ids || [],
       plan_ids: rule.plan_ids || [],
+      risk_levels: rule.risk_levels || [],
+      disposition_statuses: rule.disposition_statuses || [],
+      hide_matched_nodes: Number(rule.hide_matched_nodes || 0),
       remark: rule.remark || ""
     };
     setStatus("保存中...");

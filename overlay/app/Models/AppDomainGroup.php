@@ -14,6 +14,9 @@ class AppDomainGroup extends Model
         'updated_at' => 'timestamp',
         'user_group_ids' => 'array',
         'plan_ids' => 'array',
+        'risk_levels' => 'array',
+        'disposition_statuses' => 'array',
+        'hide_matched_nodes' => 'integer',
     ];
 
     public function bindings()

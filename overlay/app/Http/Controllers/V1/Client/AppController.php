@@ -5,6 +5,7 @@ namespace App\Http\Controllers\V1\Client;
 use App\Http\Controllers\Controller;
 use App\Services\AppDomainService;
 use App\Services\ServerService;
+use App\Services\SubscribeMonitorService;
 use App\Services\UserService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\File;
@@ -20,6 +21,9 @@ class AppController extends Controller
         if ($userService->isAvailable($user)) {
             $serverService = new ServerService();
             $servers = $serverService->getAvailableAppServers($user);
+            (new SubscribeMonitorService())->record($request, $user, 'app_get_config', ['status' => 1]);
+        } else {
+            (new SubscribeMonitorService())->record($request, $user, 'app_get_config', ['status' => 0]);
         }
         $defaultConfig = base_path() . '/resources/rules/app.clash.yaml';
         $customConfig = base_path() . '/resources/rules/custom.app.clash.yaml';

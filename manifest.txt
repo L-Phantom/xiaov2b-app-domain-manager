@@ -7,6 +7,7 @@ app/Http/Controllers/V1/Admin/Server/V2nodeController.php
 app/Http/Controllers/V1/Admin/Server/VlessController.php
 app/Http/Controllers/V1/Admin/Server/VmessController.php
 app/Http/Controllers/V1/Admin/Server/AppDomainController.php
+app/Http/Controllers/V1/Admin/Server/SubscribeMonitorController.php
 app/Http/Controllers/V1/Client/AppController.php
 app/Http/Controllers/V1/Client/ClientController.php
 app/Http/Controllers/V1/User/OrderController.php
@@ -23,6 +24,11 @@ app/Http/Middleware/AppUser.php
 app/Models/AppDomainBinding.php
 app/Models/AppDomainGroup.php
 app/Models/AppDomainRule.php
+app/Models/SubscribeAccessLog.php
+app/Models/SubscribeDisposition.php
+app/Models/SubscribeDispositionLog.php
+app/Models/SubscribeIpCache.php
+app/Models/SubscribeRiskSnapshot.php
 app/Protocols/ClashMeta.php
 app/Http/Requests/Admin/AppDomainRuleSave.php
 app/Http/Requests/Admin/AppDomainGroupSave.php
@@ -38,9 +44,13 @@ app/Services/AppDomainService.php
 app/Services/AppClientProfileService.php
 app/Services/PaymentService.php
 app/Services/ServerService.php
+app/Services/Ip2RegionService.php
+app/Services/SubscribeMonitorService.php
+app/Support/Ip2Region/Searcher.class.php
 app/Utils/Helper.php
 public/assets/admin/umi.js
 public/assets/admin/app-domain-manager.js
+public/assets/admin/subscribe-monitor-manager.js
 resources/rules/app.meta.clash.yaml
 resources/views/admin.blade.php
 routes/web.php
