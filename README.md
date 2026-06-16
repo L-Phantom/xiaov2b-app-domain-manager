@@ -1,492 +1,202 @@
-# xiaov2b App Domain Manager Pack
+# xiaov2b App Domain Manager
 
-这是一个给 `xiaov2b / v2board` 管理后台使用的可复装补丁包。
+Reusable overlay package for xiaov2b / V2Board-style Laravel panels.
 
-目标：
-- 在后台 `服务器` 分类下增加 `域名分发`
-- 增加 `App 专用订阅`、`App bootstrap`、`App API 多域名`
-- 增加 `App 专用完整 Meta 订阅`，供客户端第二阶段静默升级使用
-- 增加 `/api/v2/app/*` App API 兼容层，覆盖启动、能力、登录会话、用户信息、节点清单、套餐、订单、公告、诊断上报等客户端页面能力
-- 在节点管理里增加 `App可见` 开关
-- 入口域名替换由规则页统一管理，可按节点、套餐、权限组分发
-- 域名分发入口组可按行为监管的风险等级 / 人工处置状态匹配，用于给观察或建议拉黑用户下发专属入口域名
-- 在后台 `服务器` 分类下增加独立 `行为监管`，观察订阅/App 配置拉取行为、入口域名、IP、账号与 token hash 异常分布，并按可配置规则生成账号风险画像
-- 让普通网页订阅与 App 专用订阅分流
-- 面板升级后可再次一键部署
+It adds two admin modules:
 
-当前补丁基线：
-- upstream: `wyx2685/v2board`
-- base commit: `e384825b`
+- `域名分发`: rule-based entrance domain and port dispatch for App subscriptions.
+- `行为监管`: subscription access monitoring, account risk profiles, manual review queues, and behavior-linked dispatch.
 
-## 当前生产语境
+The package is designed to be re-applied after upstream panel upgrades. It keeps a manifest, backs up overwritten files, runs database migrations explicitly, and provides local verification scripts.
 
-- 配套客户端已经迭代到正式交付线 `1.0.3`，不是候选交付状态。
-- 客户端关键版本提交：
-  - `0e87b0b`：v1.0.3，强制更新、图标修复、注册/忘记密码修复、版本号升级。
-  - `cecd95b`：Windows VC runtime DLL、Dio timeout、关键诊断日志、`apply_branding.dart` 图标拉取修复。
-- 当前打包方式：
-  - macOS 本地打包
-  - Android 本地打包
-  - Windows GitHub Actions 打包
-- 后续这个仓库按生产维护 / 测试平台灰度思路推进，优先保证可回滚、可验证、可重复部署。
-- 2026-06-03 已补齐 App API 域名池协议处理：
-  - `185.200.65.62:3883` 这类 IP:端口 endpoint 默认按 `http://` 下发，不再强制拼成不可用的 `https://`。
-  - `/api/v2/app/bootstrap`、App 域名管理后台预览、V1 App bootstrap 统一保留 endpoint 协议。
-  - `app.user` 中间件已纳入补丁清单，避免 V2 App 登录态接口在 Workerman 下因 middleware alias 未注册返回 502。
+## What It Deploys
 
-## 目录说明
+- Admin UI entries under the server management area.
+- App-specific V1 subscription, bootstrap, config, and version endpoints.
+- `/api/v2/app/*` compatibility endpoints for App login state, user info, nodes, plans, orders, notices, and diagnostics.
+- App-only Clash Meta subscription template.
+- Node visibility and entrance-domain fields for supported server tables.
+- Rule tables for entrance domain dispatch.
+- Subscription access logs, IP cache, manual disposition, and risk snapshot tables.
+- `ip2region` xdb integration for coarse IP region lookup.
+- Optional payment callback overlay files listed in `manifest.txt`.
 
-- `overlay/`
-  直接覆盖到面板根目录的文件
-- `manifest.txt`
-  本补丁涉及的文件清单
-- `install.sh`
-  安装补丁并自动备份原文件
-- `uninstall.sh`
-  按最近一次备份回滚
-- `verify.sh`
-  做一轮安装后验证
-- `scripts/runtime_verify.php`
-  校验当前面板内的 App 域名管理运行状态
-- `scripts/scenario_verify.php`
-  做一轮不落库的场景验证，确认普通订阅与 App 订阅分流逻辑
-- `scripts/preflight.php`
-  检查目标站点、PHP 能力、规则表和节点字段状态
-- `scripts/migrate_app_domain.php`
-  创建 App 域名规则表、行为监管日志表，默认 dry-run，明确传 `--apply` 才执行
-- `scripts/package_release.sh`
-  做 manifest / PHP / JS / shell 检查，生成补丁包 tar.gz 和 SHA256
-- `scripts/update_ip2region_xdb.sh`
-  下载 / 更新 `ip2region_v4.xdb` 到目标站点 `storage/ip2region/`，用于行为监管 IP 归属地解析
-- `scripts/update_ip_intelligence.php`
-  导出待补充情报的订阅 IP，或导入 ASN、AS 名称、网络类型、代理/VPN/风险分等 IP 情报 CSV
-- `scripts/update_free_ip_intelligence.php`
-  使用免费公开源为最近订阅 IP 补充 ASN、AS 名称、Datacenter/VPN 粗分类情报
-- `scripts/cleanup_subscribe_monitor.php`
-  行为监管数据清理脚本。默认只 dry-run；可按保留天数清理原始拉取记录、风险快照、IP 情报缓存，处置日志长期保留。
-- `scripts/fresh_upstream_drill.sh`
-  拉取原版 upstream 到临时目录，做补丁包结构验证和安装 dry-run / apply 演练
-- `PRODUCTION_RUNBOOK.md`
-  生产平台升级、验证、回滚和故障判断步骤
-- `sql/app_domain_rules.sql`
-  App 域名分发规则表 SQL
-- `sql/subscribe_access_logs.sql`
-  行为监管订阅访问日志表 SQL，记录 token hash，不保存明文 token
-- `overlay/app/Services/SubscribeMonitorService.php`
-  行为监管聚合服务。当前只使用本地数据库可计算信号：短窗口频率、账号状态、User-Agent、入口域名策略、同 IP 多账号 / 多 token，并支持风险画像快照缓存、风险变化时间线、处置备注/操作人筛选、观察超期提示、IP 情报状态和服务端分页基础。
-- `overlay/app/Services/Ip2RegionService.php` 与 `overlay/app/Support/Ip2Region/Searcher.class.php`
-  行为监管 IP 归属地解析。优先读取 `storage/ip2region/ip2region_v4.xdb`，缺失时自动跳过，不影响订阅下发或后台页面。
-- `scripts/update_ip_intelligence.php`
-  行为监管 IP 情报导入器。它不会联网，也不会猜测代理/VPN；只把可信来源整理出的 CSV 写入 `v2_subscribe_ip_cache`，供账号风险画像读取。
-- `scripts/update_free_ip_intelligence.php`
-  免费 IP 情报更新器。当前默认使用 IPtoASN 的 IPv4/IPv6 ASN 数据，以及 X4BNet 的 IPv4 Datacenter/VPN CIDR 列表。该结果只作为行为监管风险信号之一，不做一票否决。
-- `overlay/resources/rules/app.meta.clash.yaml`
-  App 第二阶段完整 Meta 模板
-- `overlay/app/Http/Routes/V2/AppRoute.php`
-  V2 App API 路由，挂载 `/api/v2/app/*`
-- `overlay/app/Http/Controllers/V2/App/*`
-  V2 App API 控制器，提供客户端首页、节点、套餐、订单、公告、登录态和诊断接口
-- `overlay/app/Http/Controllers/V1/User/OrderController.php` 与 `overlay/app/Services/PaymentService.php`
-  生产站 EZ 主题支付回调/下单覆盖文件，随本补丁一同安装，避免 xiaov2b 升级后再二次手动替换
-- `platform/`
-  Brand Manager / 打包后台，用于品牌配置、manifest、安装包上传、发布记录、强制更新与 `branding.dart` 预览。
-  当前本地 `platform/` 仍是未跟踪目录，生产数据不在本地工作区。
+## Main Features
 
-## 打包后台说明
+`域名分发` supports:
 
-`platform/` 是配套的打包后台 / Brand Manager，核心能力包括：
+- Dispatch by node, node type, plan, user group, risk level, and manual disposition.
+- Host and port replacement.
+- Separate behavior-disposition entrance groups from ordinary App distribution rules.
+- Plain subscription protection: ordinary App rules do not affect normal `/api/v1/client/subscribe`; only behavior-scoped groups can affect plain subscriptions.
+- Preview and scenario verification for rule matching.
 
-- 品牌配置：品牌名、Panel URL、API 域名池、Manifest Secret、Subscribe Sign Secret
-- 分发配置：OSS Manifest URLs、落地页、客服 ID
-- 资源上传：品牌图标、Android APK、macOS DMG/ZIP、Windows EXE/MSIX/ZIP
-- 版本发布：版本号、更新日志、强制更新、发布历史
-- 客户端构建辅助：生成 encrypted manifest 与 `branding.dart` 预览
+`行为监管` supports:
 
-生产化前建议先决定是否把 `platform/` 正式纳入仓库，并补齐：
+- Logging subscription/App config pulls without storing plaintext tokens.
+- Account-level risk profiles based on request frequency, token/IP sharing, account state, traffic usage, client User-Agent, entry host, and IP intelligence.
+- Configurable risk thresholds and scoring.
+- `待复核` and `建议拉黑` queues.
+- Manual disposition notes, operator filters, overdue review hints, and profile clearing.
+- Risk snapshot rebuild and timeline view.
+- Optional ASN / IDC / VPN style enrichment through CSV or free public IP intelligence import scripts.
 
-- 部署文档
-- 默认密码 / 凭据初始化策略
-- 包文件 SHA256 / 大小 / 上传时间记录
-- 发布回滚说明
-- 固定 Public Base URL / HTTPS / 缓存头
+## Repository Layout
 
-## 安装
+- `overlay/`: files copied into the target panel.
+- `manifest.txt`: exact overlay file list.
+- `install.sh`: installs overlay files, creates backups, clears caches, and installs the IP xdb if missing.
+- `uninstall.sh`: restores files from an installer backup.
+- `verify.sh`: verifies installed files, runtime bootstrap, and optional HTTP routes.
+- `scripts/preflight.php`: checks target panel readiness.
+- `scripts/migrate_app_domain.php`: dry-run/apply database migrations.
+- `scripts/runtime_verify.php`: checks runtime service state.
+- `scripts/scenario_verify.php`: verifies dispatch scenarios without persisting test data.
+- `scripts/package_release.sh`: builds a release tarball and checksum.
+- `scripts/update_ip2region_xdb.sh`: manually refreshes `ip2region_v4.xdb`.
+- `scripts/update_ip_intelligence.php`: exports missing IPs or imports trusted IP intelligence CSV.
+- `scripts/update_free_ip_intelligence.php`: imports coarse free ASN/datacenter/VPN data.
+- `scripts/cleanup_subscribe_monitor.php`: cleans old behavior-monitor records by retention policy.
+- `PRODUCTION_RUNBOOK.md`: generic production deployment checklist.
+
+## Install
+
+Run commands on the target server or in a shell that can access the target panel root.
 
 ```bash
-cd /path/to/app-domain-manager-package
-php82 scripts/preflight.php /path/to/v2board-root
-php82 scripts/migrate_app_domain.php /path/to/v2board-root --dry-run
-php82 scripts/migrate_app_domain.php /path/to/v2board-root --apply
-bash install.sh --dry-run /path/to/v2board-root
-bash install.sh /path/to/v2board-root
-bash scripts/update_ip2region_xdb.sh /path/to/v2board-root
+cd /path/to/xiaov2b-app-domain-manager
+
+php scripts/preflight.php /path/to/panel-root
+php scripts/migrate_app_domain.php /path/to/panel-root --dry-run
+php scripts/migrate_app_domain.php /path/to/panel-root --apply
+
+bash install.sh --dry-run /path/to/panel-root
+bash install.sh /path/to/panel-root
+bash verify.sh /path/to/panel-root
 ```
 
-如果不传路径，会尝试使用当前目录（要求当前目录下存在 `artisan`）。
+If the server uses a versioned PHP binary, replace `php` with that binary, for example `php82`.
 
-安装时会：
-- 可选创建 `v2_app_domain_rules` 规则表
-- 可选创建 `v2_subscribe_access_logs` 行为监管日志表
-- 可选创建 `v2_subscribe_ip_cache` IP 归属地缓存表
-- 可选创建 `v2_subscribe_dispositions` / `v2_subscribe_disposition_logs` 人工处置表
-- 可选创建 `v2_subscribe_risk_snapshots` 风险画像快照表
-- 可选补齐节点表 `app_show` 与 `app_domain_replace` 字段
-- 输出将覆盖 / 新增 / 不变的文件清单、源文件 SHA256、目标文件 SHA256；`--dry-run` 只预览不改文件
-- 备份原文件到目标站点下的 `.app-domain-manager-backups/`
-- 写入 `install-summary.tsv`，用于复盘本次覆盖范围和 checksum
-- 覆盖 `overlay/` 中的文件
-- 同步覆盖 EZ 主题支付相关的 `V1/User/OrderController.php` 和 `PaymentService.php`
-- 执行 `view:clear`
-- 执行 `config:clear` 与 `config:cache`
-- 如果检测到 Webman，优先执行完整 `stop/start`，必要时才回退到进程 reload
-
-`ip2region_v4.xdb` 不会直接打进补丁包，避免大文件和更新节奏污染 overlay。需要启用 IP 归属地时运行：
+`install.sh` automatically creates `storage/ip2region/` and downloads `ip2region_v4.xdb` when the file is missing or too small. To use a mirror:
 
 ```bash
-bash scripts/update_ip2region_xdb.sh /path/to/v2board-root
+IP2REGION_XDB_URL="https://mirror.example.com/ip2region_v4.xdb" bash install.sh /path/to/panel-root
 ```
 
-也可以传入自建镜像地址：
+Manual refresh is also available:
 
 ```bash
-bash scripts/update_ip2region_xdb.sh /path/to/v2board-root https://your-mirror.example.com/ip2region_v4.xdb
+bash scripts/update_ip2region_xdb.sh /path/to/panel-root
 ```
 
-如果要补充 ASN / AS 名称 / IDC、家宽、移动网络 / 代理、VPN、Tor、Bot 等情报，先导出最近访问过但缺少情报的 IP：
+## Verify
+
+Basic local verification:
 
 ```bash
-php82 scripts/update_ip_intelligence.php /path/to/v2board-root --export-missing > missing-ips.csv
+bash verify.sh /path/to/panel-root
+php scripts/runtime_verify.php /path/to/panel-root
+php scripts/scenario_verify.php /path/to/panel-root app-entry.example.com
 ```
 
-再把第三方或自建 IP 库结果整理成 CSV 后导入：
+Optional HTTP verification with real session values:
 
 ```bash
-php82 scripts/update_ip_intelligence.php /path/to/v2board-root ip-intelligence.csv --dry-run
-php82 scripts/update_ip_intelligence.php /path/to/v2board-root ip-intelligence.csv --apply
+bash verify.sh /path/to/panel-root \
+  "https://panel.example.com" \
+  "admin-secure-path" \
+  "user-token" \
+  "admin-authorization-header" \
+  "app-authorization-header"
 ```
 
-CSV 推荐字段：
+Do not commit real domains, tokens, credentials, or production IP addresses.
+
+## Rollback
+
+Each install creates a backup under the target panel:
+
+```text
+/path/to/panel-root/.app-domain-manager-backups/<timestamp>
+```
+
+Use the exact rollback command printed by `install.sh`:
+
+```bash
+bash uninstall.sh /path/to/panel-root /path/to/panel-root/.app-domain-manager-backups/<timestamp>
+```
+
+## IP Intelligence
+
+The built-in xdb lookup provides coarse region and ISP data. Extra intelligence is optional.
+
+Export missing IPs:
+
+```bash
+php scripts/update_ip_intelligence.php /path/to/panel-root --export-missing > missing-ips.csv
+```
+
+Import a trusted CSV:
+
+```bash
+php scripts/update_ip_intelligence.php /path/to/panel-root ip-intelligence.csv --dry-run
+php scripts/update_ip_intelligence.php /path/to/panel-root ip-intelligence.csv --apply
+```
+
+CSV fields:
 
 ```csv
 ip,asn,as_name,network_type,ip_risk_type,ip_risk_score,source
-1.1.1.1,13335,Cloudflare,idc,,0,manual_csv
+203.0.113.10,64500,Example ASN,idc,,0,manual_csv
 ```
 
-字段说明：
-- `network_type` 只接受 `idc`、`fixed`、`mobile`
-- `ip_risk_type` 只接受 `proxy`、`vpn`、`tor`、`bot`
-- 没有可靠来源时不要填 `ip_risk_type`，行为监管会保持未知，不会伪造风险判断
+Allowed values:
 
-如果只想直接使用免费公开源补一个大致正确的 IP 画像，可以运行：
+- `network_type`: `idc`, `fixed`, `mobile`
+- `ip_risk_type`: `proxy`, `vpn`, `tor`, `bot`
+
+Free-source enrichment:
 
 ```bash
-php82 scripts/update_free_ip_intelligence.php /path/to/v2board-root --dry-run
-php82 scripts/update_free_ip_intelligence.php /path/to/v2board-root --apply
+php scripts/update_free_ip_intelligence.php /path/to/panel-root --dry-run
+php scripts/update_free_ip_intelligence.php /path/to/panel-root --apply
 ```
 
-默认免费源：
-- `IPtoASN`：补充 ASN、AS 名称、国家代码，支持 IPv4 / IPv6
-- `X4BNet/lists_vpn`：补充 IPv4 Datacenter / VPN CIDR 粗分类
+## Data Retention
 
-建议用 cron 每天跑一次：
-
-```cron
-17 3 * * * cd /path/to/app-domain-manager-package && php82 scripts/update_free_ip_intelligence.php /path/to/v2board-root --apply >/tmp/xiaov2b-free-ip-intel.log 2>&1
-```
-
-行为监管数据清理建议也放进 cron。先 dry-run 看匹配数量：
+Preview cleanup:
 
 ```bash
-php82 scripts/cleanup_subscribe_monitor.php /path/to/v2board-root --dry-run
+php scripts/cleanup_subscribe_monitor.php /path/to/panel-root --dry-run
 ```
 
-确认无误后执行：
+Apply cleanup:
 
 ```bash
-php82 scripts/cleanup_subscribe_monitor.php /path/to/v2board-root --apply \
+php scripts/cleanup_subscribe_monitor.php /path/to/panel-root --apply \
   --access-log-days=180 \
   --snapshot-days=365 \
   --ip-cache-days=90
 ```
 
-推荐保留策略：
-- 原始拉取记录：90-180 天
-- 风险画像快照：365 天
-- IP 情报缓存：30-90 天
-- 人工处置日志：长期保留
+Recommended retention:
 
-行为监管页面的数据口径：
-- `账号风险列表` 使用服务端分页，避免一次拉取过多账号画像。
-- 顶部风险分布、`高风险列表`、`待复核列表`、`建议拉黑列表` 优先使用 `v2_subscribe_risk_snapshots` 的最新快照做全量统计，不跟随当前页漂移。
-- 如果快照表为空或未迁移，页面会临时回退到当前页统计，并在 `画像统计口径` 状态卡提示需要先重算风险快照。
-- 风险规则调整后，点击后台 `重算风险快照`，有变化的账号才会新增快照记录。
-- 每个账号画像会返回 `risk_explain`，用于展示判断结论、建议动作、核心证据和抵扣因素，避免管理员只看到分数而不知道该怎么处理。
-- `待复核列表` 默认只显示手动加入观察、`极危险` 或达到待复核分数线的账号；`中风险` 和普通 `高风险` 不会自动进入人工队列。
-- 人工确认账号正常后，可用 `移出观察` 清掉当前处置状态；如果需要重置这个账号的行为判断，可用 `清除行为画像` 删除该账号的订阅拉取记录、风险快照和当前处置状态，并保留一条操作日志。
+- Raw access logs: 90-180 days.
+- Risk snapshots: 365 days.
+- IP cache: 30-90 days.
+- Manual disposition logs: keep long term.
 
-黑名单专属入口建议流程：
-- 在 `行为监管` 中确认账号行为后，人工标记为 `建议拉黑`。
-- 在 `域名分发` 的 `入口规则` 点击 `创建黑名单入口组`，填写专属入口域名，选择要下发的节点和端口。
-- 这个入口组默认只匹配处置状态为 `建议拉黑` 的账号；普通用户、观察用户、白名单用户不会命中。
-- `入口规则` 页面会把带风险等级 / 处置状态的规则放在 `行为处置入口`，普通规则放在 `普通入口规则`，避免黑名单专属入口和日常 App 分发规则混在同一排序里误判。
-- 带风险等级 / 处置状态的入口组会同时作用于普通 `/api/v1/client/subscribe` 和 App 专用订阅；不带风险 / 处置条件的普通入口组仍只按 App 专用域名分发链路处理，避免误改普通订阅。
-- 即使 `入口域名规则` 开启，只要普通订阅用户没有命中 `行为处置入口`，普通 `/api/v1/client/subscribe` 仍保持原节点入口；`普通入口规则` 不会影响普通订阅。
-- 运行时同样优先匹配 `行为处置入口`，再匹配普通入口规则，防止普通规则先命中后覆盖建议拉黑 / 观察用户的专属入口。
-- `命中后隐藏绑定节点` 只用于不想给这部分用户下发某些节点的隔离策略；如果目标是给黑名单用户下发独立入口，请保持关闭并绑定对应节点。
-- 行为监管不会自动封禁、冻结、修改用户组或写死入口域名。实际下发哪个入口，始终由 `域名分发` 的入口组配置决定。
+## Development Plan
 
-## 回滚
+Next useful improvements:
 
-```bash
-cd /path/to/app-domain-manager-package
-bash uninstall.sh /path/to/v2board-root
-```
+- Make risk rules easier to export/import between panels.
+- Add more regression scenarios for mixed plan/group/risk dispatch.
+- Improve admin-side bulk operations and audit history.
+- Add scheduled command examples for risk snapshot rebuild and data cleanup.
+- Keep payment overlay files optional and better documented for forks that do not need them.
 
-默认回滚最近一次安装生成的备份。
+## Notes
 
-安装完成后终端会打印精确回滚命令，例如：
-
-```bash
-bash uninstall.sh /path/to/v2board-root /path/to/v2board-root/.app-domain-manager-backups/20260604-120000
-```
-
-## 验证
-
-只做本地运行时校验：
-
-```bash
-bash verify.sh /path/to/v2board-root
-```
-
-如果要顺带测 HTTP 接口：
-
-```bash
-bash verify.sh /path/to/v2board-root \
-  https://panel.example.com \
-  YOUR_SECURE_PATH \
-  YOUR_USER_TOKEN \
-  YOUR_ADMIN_AUTH \
-  YOUR_APP_AUTH
-```
-
-参数说明：
-- 第 1 个参数：站点根目录
-- 第 2 个参数：站点基础 URL
-- 第 3 个参数：后台安全路径
-- 第 4 个参数：可用用户 token
-- 第 5 个参数：后台 `authorization` 值，可选
-- 第 6 个参数：App/V2 登录态 `authorization` 值，可选，用于验证 `/api/v2/app/client/config` 和节点 manifest
-
-如果要验证“普通订阅保留原 host，App 订阅改成 App 入口域名”：
-
-```bash
-php82 scripts/scenario_verify.php /path/to/v2board-root app-edge.example.com
-```
-
-这条命令会：
-- 在事务里临时把一个节点视为 `app_show=1`
-- 只在运行时打开 `app_domain_enable=1`
-- 临时注入 `app_domain_replace_host`
-- 如果规则表存在，会在事务里临时创建规则，验证规则匹配优先级
-- 如果入口组与处置表存在，会临时标记一个用户为 `建议拉黑`，验证普通订阅与 App 专用订阅都会命中黑名单专属入口组、端口替换、清除处置后不再命中
-- 输出普通节点样本与 App 节点样本
-- 最后自动回滚，不写入数据库
-
-## 生成发布补丁包
-
-本地生成标准 tar.gz：
-
-```bash
-bash scripts/package_release.sh
-```
-
-产物位于：
-
-```bash
-dist/xiaov2b-app-domain-manager-<commit>-<timestamp>.tar.gz
-dist/xiaov2b-app-domain-manager-<commit>-<timestamp>.tar.gz.sha256
-```
-
-包内包含：
-- overlay 文件
-- installer / uninstaller / verifier
-- migration / preflight / scenario scripts
-- `MANIFEST-SHA256.txt`
-- `ROOT-SHA256.txt`
-
-`platform/` 打包后台仍然不会进入这个补丁包，避免把本地 Brand Manager 数据或运行态混进后端 overlay。
-
-GitHub Actions 会在 `main` push、PR 和手动触发时自动跑 `Package Overlay`，并上传同样的 tar.gz + SHA256 artifact。
-
-## 原版环境安装演练
-
-只做结构层面的 fresh upstream drill：
-
-```bash
-bash scripts/fresh_upstream_drill.sh
-```
-
-默认会拉取：
-
-```bash
-https://github.com/wyx2685/v2board.git
-```
-
-默认基线：
-
-```bash
-e384825b
-```
-
-可以覆盖：
-
-```bash
-UPSTREAM_URL=git@github.com:xxx/xiaov2b.git \
-UPSTREAM_REF=main \
-bash scripts/fresh_upstream_drill.sh
-```
-
-注意：fresh checkout 通常没有 `vendor/` 和数据库配置，因此这个脚本会完成 overlay 安装结构验证；完整 runtime、migration、HTTP 验证仍需在测试平台或带数据库的 drill 站点上执行。
-
-## App 域名规则 API
-
-第三阶段新增了规则表和后端 API，供后续原生化后台 UI 使用。
-
-兼容旧接口：
-- `GET /api/v1/{secure_path}/server/app-domain/fetch`
-- `POST /api/v1/{secure_path}/server/app-domain/save`
-
-新增接口：
-- `GET /api/v1/{secure_path}/server/app-domain/config`
-- `POST /api/v1/{secure_path}/server/app-domain/config`
-- `GET /api/v1/{secure_path}/server/app-domain/groups`
-- `POST /api/v1/{secure_path}/server/app-domain/group/save`
-- `POST /api/v1/{secure_path}/server/app-domain/group/drop`
-- `POST /api/v1/{secure_path}/server/app-domain/binding/save`
-- `POST /api/v1/{secure_path}/server/app-domain/binding/drop`
-- `GET /api/v1/{secure_path}/server/app-domain/rules`
-- `POST /api/v1/{secure_path}/server/app-domain/rule/save`
-- `POST /api/v1/{secure_path}/server/app-domain/rule/drop`
-- `POST /api/v1/{secure_path}/server/app-domain/rule/sort`
-- `GET /api/v1/{secure_path}/server/app-domain/options`
-
-规则表存在且 `app_domain_rule_enable=1` 时，`AppDomainService` 会优先按入口域名规则匹配用户组、套餐和节点范围。命中规则内的节点入口后直接用规则入口域名覆盖节点 host，并按节点行里的入口端口覆盖节点 port；入口端口留空时沿用节点原端口。没有命中节点入口时会继续兼容旧规则表；旧规则也未命中时节点保持原始入口地址，不再自动回落全局 App 域名配置。
-
-后台 UI 的日常使用方式：
-- 在 `入口域名规则` 中填写规则名称、入口域名，并选择适用用户组、套餐。
-- 在规则弹窗里的 `节点入口` 列表中选择具体节点；入口端口留空时沿用节点原端口，填写时覆盖下发端口。
-- 节点列表直接来自现有节点表，操作方式接近节点父子关系：规则像父级，节点入口像子级。
-- 节点管理页不再展示独立的 `域名替换` 列，避免形成第二套入口域名策略；底层字段仅在规则功能关闭、走旧全局替换时继续兼容。
-
-后台入口：
-- 主入口：`/{secure_path}#/server/app-domain`
-- 兼容入口：`/{secure_path}/server/app-domain-plugin` 会跳到新入口
-
-## 给 FlClash / 自研客户端的联调入口
-
-当前 App 端相关接口：
-- `GET /api/v1/client/app/bootstrap?token=...`
-- `GET /api/v1/client/app/getConfig?token=...`
-- `GET /api/v1/client/app/getVersion?token=...`
-- `GET /api/v1/client/custom_app/subscribe?token=...`
-- `GET /api/v1/client/custom_app/subscribe?token=...&flag=app_meta`
-- `GET /api/v2/app/bootstrap`
-- `GET /api/v2/app/capabilities`
-- `GET /api/v2/app/client/version`
-- `GET /api/v2/app/client/debug`
-- `GET /api/v2/app/disaster-recovery`
-- `POST /api/v2/app/auth/login`
-- `POST /api/v2/app/auth/register`
-- `GET /api/v2/app/auth/session`
-- `GET /api/v2/app/client/config`
-- `GET /api/v2/app/user/info`
-- `GET /api/v2/app/nodes/manifest`
-- `GET /api/v2/app/nodes/list`
-- `GET /api/v2/app/plans`
-- `GET /api/v2/app/notices`
-- `GET /api/v2/app/orders`
-- `POST /api/v2/app/diagnostics/report`
-
-推荐联调顺序：
-1. 客户端登录后先请求 `bootstrap`
-2. 如果 `api_domain_enable=1`，按 `api_domains` 或 `api_urls` 做轮询
-3. 用 `subscribe_url` 拉取 App 专用订阅
-4. 用 `getConfig` 拉取 App 专用 Clash 配置
-5. 核心和首阶段 profile 可用后，再请求 `flag=app_meta` 获取完整 Meta 配置
-6. 新客户端优先使用 `/api/v2/app/*` 获取首页能力、节点 manifest、套餐订单和公告；老客户端继续走 V1 App 接口
-
-## 二阶段完整订阅说明
-
-这次补丁把 App 的完整规则升级收成了一个最小补丁面：
-
-- `overlay/app/Http/Controllers/V1/Client/ClientController.php`
-  增加 `flag=app_meta` 分支
-- `overlay/app/Protocols/ClashMeta.php`
-  支持按调用方覆盖模板路径
-- `overlay/resources/rules/app.meta.clash.yaml`
-  作为 App 第二阶段完整 Meta 模板
-
-设计目标：
-
-- 首阶段继续沿用现有 `custom_app/subscribe + app/getConfig`
-- 第二阶段只给 App 额外提供一份完整 Meta 配置
-- 不污染普通 `flag=meta` 或普通第三方客户端使用的 `default.clash.yaml`
-
-如果目标站点没有安装这份补丁，客户端仍然可以回退到普通 `flag=meta`。
-
-## 后续维护计划
-
-这份仓库推荐按“overlay 复装包”维护，而不是长期手改线上文件。
-
-原生化重构路线见：
-- `NATIVE_REFACTOR_PLAN.md`
-
-生产升级步骤见：
-- `PRODUCTION_RUNBOOK.md`
-
-推荐流程：
-
-1. 先在测试平台手动升级原版 `wyx2685/v2board` / xiaov2b。
-2. 升级完成后，先检查站点文件、PHP CLI、后台安全路径、测试用户 token、数据库字段。
-3. 在新版本站点上重新执行 `bash install.sh /path/to/site`
-4. 再执行 `bash verify.sh /path/to/site ...`
-5. 如果验证失败，只重新对齐这几个高风险文件：
-   - `ClientController.php`
-   - `ClashMeta.php`
-   - `app.meta.clash.yaml`
-   - 以及你原来 `AppDomain / bootstrap / custom_app subscribe` 那几处 overlay
-   - 以及 2026-05-12 后新增的节点级 `app_show / app_domain_replace` 控制器、Request 与 admin asset 文件
-
-这样做的原因是：
-
-- 面板升级后，大部分文件并不会和这份补丁冲突
-- 真正的冲突面集中在少数订阅入口和协议模板文件
-- 把 App 专用完整 Meta 通道和节点级 App 开关单独收口后，后续维护成本会明显比“大面积魔改 default.clash.yaml”更低
-
-## 下一轮测试平台计划
-
-当前计划：
-
-1. 用户先手动完成测试平台升级。
-2. 升级后由 Codex 介入，检查升级后的真实文件与 schema。
-3. 再安装本 overlay 补丁包。
-4. 验证 App bootstrap、App config、App version、App-only subscribe、App meta subscribe、admin fetch/save。
-5. 重点验证：
-   - `app_show=0` 不进入 App 专用订阅
-   - `app_domain_replace=0` 在全局替换开启时仍保留原 host
-   - 普通网页订阅不被 App 专用模板污染
-   - 配置保存后 config cache / webman reload 生效
-6. 通过后再整理生产发布步骤与回滚命令。
-
-## 当前边界
-
-这不是原生插件系统下的“热插拔插件”，而是一个可复装补丁包。
-
-原因：
-- 当前 `xiaov2b / v2board` 后台没有现成的、能完整接管路由/菜单/节点管理/订阅逻辑的通用插件框架
-- 所以升级面板后，最稳的方案是重新执行一次 `install.sh`
-
-这也是这份包存在的目的。
-
-更细的升级维护流程见：
-- `MAINTENANCE.md`
+- `platform/` is a local packaging/brand-management helper and is not part of the public overlay package unless promoted as a separate project.
+- This repository should stay generic. Keep production domains, IPs, brand names, secrets, and customer identifiers out of committed files.

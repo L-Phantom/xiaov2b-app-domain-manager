@@ -281,7 +281,7 @@
       traffic: { no_usage_pulls: 5, no_usage_score: 45, low_usage_pulls: 8, low_usage_bytes: 10485760, low_usage_score: 32, normal_usage_bytes: 52428800, normal_usage_discount: 25 },
       client: {
         suspicious_keywords: ["curl", "wget", "python", "go-http-client", "postman", "okhttp", "httpclient"],
-        trusted_keywords: ["CHCCLINK", "FlClash", "Clash", "sing-box", "v2rayN", "Shadowrocket", "Stash"],
+        trusted_keywords: ["FlClash", "Clash", "sing-box", "v2rayN", "Shadowrocket", "Stash"],
         suspicious_score_each: 10,
         suspicious_max_score: 30,
         empty_agent_score_each: 2,

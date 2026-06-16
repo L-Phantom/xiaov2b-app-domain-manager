@@ -1683,7 +1683,7 @@ class SubscribeMonitorService
             ],
             'client' => [
                 'suspicious_keywords' => ['curl', 'wget', 'python', 'go-http-client', 'postman', 'okhttp', 'httpclient'],
-                'trusted_keywords' => ['CHCCLINK', 'FlClash', 'Clash', 'sing-box', 'v2rayN', 'Shadowrocket', 'Stash'],
+                'trusted_keywords' => ['FlClash', 'Clash', 'sing-box', 'v2rayN', 'Shadowrocket', 'Stash'],
                 'suspicious_score_each' => 10,
                 'suspicious_max_score' => 30,
                 'empty_agent_score_each' => 2,
