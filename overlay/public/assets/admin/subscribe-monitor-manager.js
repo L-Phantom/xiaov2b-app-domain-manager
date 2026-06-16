@@ -550,8 +550,9 @@
   function renderDispositionQueue(title, rows, emptyText) {
     rows = rows || [];
     var isReviewQueue = title.indexOf("待复核") >= 0;
+    var clearStatus = isReviewQueue ? "handled" : "none";
     var actions = rows.length
-      ? "<button class=\"smm-btn smm-bulk-handled\" data-queue=\"" + escapeHtml(title) + "\">批量已处理</button><button class=\"smm-btn smm-bulk-clear\" data-queue=\"" + escapeHtml(title) + "\">批量移出队列</button>"
+      ? "<button class=\"smm-btn smm-bulk-handled\" data-queue=\"" + escapeHtml(title) + "\">批量已处理</button><button class=\"smm-btn smm-bulk-clear\" data-clear-status=\"" + escapeHtml(clearStatus) + "\" data-queue=\"" + escapeHtml(title) + "\">批量移出队列</button>"
       : "";
     return [
       "<div class=\"smm-queue-subhead\">",
@@ -575,7 +576,7 @@
             "<td><span class=\"smm-disposition " + dispositionClass(disposition.status) + "\">" + escapeHtml(disposition.label || dispositionLabel(disposition.status)) + "</span><div class=\"smm-muted\">" + escapeHtml(ageText) + "</div>" + (overdue.overdue ? "<div class=\"smm-overdue\">超过 " + escapeHtml(overdue.threshold_days || state.filters.watch_overdue_days) + " 天未复核</div>" : "") + "</td>",
             "<td><div>" + escapeHtml(row.total || 0) + " 次</div><div class=\"smm-muted\">IP " + escapeHtml(row.ips || 0) + " / 入口 " + escapeHtml(row.hosts || 0) + "</div></td>",
             "<td>" + escapeHtml(formatTime(row.last_seen)) + "</td>",
-            "<td><div class=\"smm-table-actions\"><button class=\"smm-btn smm-user-detail\" data-user=\"" + escapeHtml(key) + "\">详情</button><button class=\"smm-btn smm-queue-remove\" data-user=\"" + escapeHtml(key) + "\">移出</button>" + (isReviewQueue ? "<button class=\"smm-btn smm-clear-profile-row\" data-user=\"" + escapeHtml(key) + "\">清除画像</button>" : "") + "</div></td>",
+            "<td><div class=\"smm-table-actions\"><button class=\"smm-btn smm-user-detail\" data-user=\"" + escapeHtml(key) + "\">详情</button><button class=\"smm-btn smm-queue-remove\" data-remove-status=\"" + escapeHtml(clearStatus) + "\" data-user=\"" + escapeHtml(key) + "\">移出</button>" + (isReviewQueue ? "<button class=\"smm-btn smm-clear-profile-row\" data-user=\"" + escapeHtml(key) + "\">清除画像</button>" : "") + "</div></td>",
             "</tr>"
           ].join("");
         }).join(""),
@@ -1181,9 +1182,10 @@
     Array.prototype.forEach.call(document.querySelectorAll(".smm-queue-remove"), function (button) {
       button.onclick = function () {
         var key = button.getAttribute("data-user") || "";
+        var status = button.getAttribute("data-remove-status") || "none";
         var rows = ((state.data && state.data.watch_profiles) || []).concat((state.data && state.data.blacklist_profiles) || []);
         var row = rows.find(function (item) { return String(item.user_id || "") === String(key); });
-        if (row) saveDisposition(row, "none");
+        if (row) saveDisposition(row, status);
       };
     });
     Array.prototype.forEach.call(document.querySelectorAll(".smm-clear-profile-row"), function (button) {
@@ -1200,7 +1202,7 @@
         var rows = title.indexOf("黑名单") >= 0
           ? ((state.data && state.data.blacklist_profiles) || [])
           : ((state.data && state.data.watch_profiles) || []);
-        bulkDisposition(rows, button.className.indexOf("smm-bulk-clear") >= 0 ? "none" : "handled");
+        bulkDisposition(rows, button.className.indexOf("smm-bulk-clear") >= 0 ? (button.getAttribute("data-clear-status") || "none") : "handled");
       };
     });
     Array.prototype.forEach.call(document.querySelectorAll("[data-rule-tab]"), function (button) {

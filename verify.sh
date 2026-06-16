@@ -160,6 +160,10 @@ grep -q "watch_score" "$TARGET_DIR/app/Services/SubscribeMonitorService.php" || 
   echo "SubscribeMonitorService missing configurable watch queue threshold" >&2
   exit 1
 }
+grep -q "data-remove-status" "$TARGET_DIR/public/assets/admin/subscribe-monitor-manager.js" || {
+  echo "subscribe monitor admin asset missing review queue remove status handling" >&2
+  exit 1
+}
 grep -q "smm-disposition-keyword" "$TARGET_DIR/public/assets/admin/subscribe-monitor-manager.js" || {
   echo "subscribe monitor admin asset missing disposition note/operator filter" >&2
   exit 1
