@@ -140,6 +140,15 @@ grep -q "下发预览" "$TARGET_DIR/public/assets/admin/subscribe-monitor-manage
   echo "subscribe monitor admin asset missing dispatch preview UI" >&2
   exit 1
 }
+if [ ! -s "$TARGET_DIR/storage/ip2region/ip2region_v4.xdb" ]; then
+  echo "ip2region xdb missing: $TARGET_DIR/storage/ip2region/ip2region_v4.xdb" >&2
+  exit 1
+fi
+IP2REGION_XDB_SIZE="$(wc -c < "$TARGET_DIR/storage/ip2region/ip2region_v4.xdb" | tr -d ' ')"
+if [ "$IP2REGION_XDB_SIZE" -lt 102400 ]; then
+  echo "ip2region xdb too small: $IP2REGION_XDB_SIZE bytes" >&2
+  exit 1
+fi
 grep -q "bulkDisposition" "$TARGET_DIR/public/assets/admin/subscribe-monitor-manager.js" || {
   echo "subscribe monitor admin asset missing batch disposition workflow" >&2
   exit 1

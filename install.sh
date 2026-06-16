@@ -6,6 +6,7 @@ TARGET_DIR=""
 DRY_RUN=0
 MANIFEST_FILE="$ROOT_DIR/manifest.txt"
 OVERLAY_DIR="$ROOT_DIR/overlay"
+IP2REGION_XDB_URL="${IP2REGION_XDB_URL:-https://raw.githubusercontent.com/lionsoul2014/ip2region/master/data/ip2region_v4.xdb}"
 
 for arg in "$@"; do
   case "$arg" in
@@ -80,6 +81,43 @@ hash_file() {
   else
     sha256sum "$1" | awk '{print $1}'
   fi
+}
+
+install_ip2region_xdb() {
+  local dest_dir="$TARGET_DIR/storage/ip2region"
+  local dest_file="$dest_dir/ip2region_v4.xdb"
+  local tmp_file="$dest_file.tmp.$$"
+  local size=""
+
+  mkdir -p "$dest_dir"
+  if [ -s "$dest_file" ]; then
+    size="$(wc -c < "$dest_file" | tr -d ' ')"
+    if [ "$size" -ge 102400 ]; then
+      echo "ip2region xdb already installed: $dest_file ($size bytes)"
+      return 0
+    fi
+  fi
+
+  echo "ip2region xdb missing or too small, downloading..."
+  if command -v curl >/dev/null 2>&1; then
+    curl -L --fail --connect-timeout 15 --max-time 180 -o "$tmp_file" "$IP2REGION_XDB_URL"
+  elif command -v wget >/dev/null 2>&1; then
+    wget -O "$tmp_file" "$IP2REGION_XDB_URL"
+  else
+    echo "Warning: curl/wget not found, skip ip2region xdb download." >&2
+    return 0
+  fi
+
+  size="$(wc -c < "$tmp_file" | tr -d ' ')"
+  if [ "$size" -lt 102400 ]; then
+    rm -f "$tmp_file"
+    echo "Warning: downloaded ip2region xdb is too small: ${size} bytes" >&2
+    return 0
+  fi
+
+  mv "$tmp_file" "$dest_file"
+  chmod 0644 "$dest_file"
+  echo "ip2region xdb installed: $dest_file ($size bytes, sha256=$(hash_file "$dest_file"))"
 }
 
 print_plan_header() {
@@ -165,7 +203,7 @@ while IFS= read -r rel_path; do
   cp -a "$src" "$dst"
 done < "$MANIFEST_FILE"
 
-mkdir -p "$TARGET_DIR/storage/ip2region"
+install_ip2region_xdb
 
 ln -sfn "$BACKUP_DIR" "$BACKUP_BASE/latest"
 
