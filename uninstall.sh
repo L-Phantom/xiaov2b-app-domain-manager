@@ -36,7 +36,7 @@ while IFS=$'\t' read -r status rel_path; do
   dst="$TARGET_DIR/$rel_path"
   bak="$BACKUP_DIR/$rel_path"
 
-  if [ "$status" = "present" ]; then
+  if [ "$status" = "present" ] || [ "$status" = "retired" ]; then
     mkdir -p "$(dirname "$dst")"
     cp -a "$bak" "$dst"
   else

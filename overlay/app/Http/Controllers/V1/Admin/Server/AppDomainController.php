@@ -134,4 +134,59 @@ class AppDomainController extends Controller
             'data' => (new AppDomainService())->getOptions()
         ]);
     }
+
+    public function previewGlobalReplace(Request $request)
+    {
+        $data = $request->validate([
+            'old_host' => 'required|string|max:255',
+            'new_host' => 'required|string|max:255',
+        ]);
+
+        return response([
+            'data' => (new AppDomainService())->previewGlobalHostReplace($data['old_host'], $data['new_host'])
+        ]);
+    }
+
+    public function applyGlobalReplace(Request $request)
+    {
+        $data = $request->validate([
+            'old_host' => 'required|string|max:255',
+            'new_host' => 'required|string|max:255',
+            'preview_token' => 'required|string|size:64',
+            'confirmation' => 'required|string|max:255',
+        ]);
+        try {
+            $operator = $request->user();
+        } catch (\Throwable $e) {
+            $operator = null;
+        }
+
+        return response([
+            'data' => (new AppDomainService())->applyGlobalHostReplace($data, $operator)
+        ]);
+    }
+
+    public function globalReplaceHistory(Request $request)
+    {
+        return response([
+            'data' => (new AppDomainService())->getGlobalHostReplaceHistory((int) $request->input('limit', 20))
+        ]);
+    }
+
+    public function rollbackGlobalReplace(Request $request)
+    {
+        $data = $request->validate([
+            'batch_uuid' => 'required|string|max:64',
+            'confirmation' => 'required|string|max:64',
+        ]);
+        try {
+            $operator = $request->user();
+        } catch (\Throwable $e) {
+            $operator = null;
+        }
+
+        return response([
+            'data' => (new AppDomainService())->rollbackGlobalHostReplace($data['batch_uuid'], $data['confirmation'], $operator)
+        ]);
+    }
 }

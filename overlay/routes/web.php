@@ -47,7 +47,6 @@ Route::get('/' . config('v2board.secure_path', config('v2board.frontend_admin_pa
         public_path('assets/admin/components.async.js'),
         public_path('assets/admin/umi.js'),
         public_path('assets/admin/app-domain-manager.js'),
-        public_path('assets/admin/subscribe-monitor-manager.js'),
     ];
     $assetVersion = config('app.version');
     $assetTimes = array_filter(array_map(function ($file) {
@@ -76,10 +75,6 @@ Route::get('/' . config('v2board.secure_path', config('v2board.frontend_admin_pa
 
 Route::get('/' . config('v2board.secure_path', config('v2board.frontend_admin_path', hash('crc32b', config('app.key')))) . '/server/app-domain-plugin', function () {
     return redirect('/' . config('v2board.secure_path', config('v2board.frontend_admin_path', hash('crc32b', config('app.key')))) . '#/server/app-domain');
-});
-
-Route::get('/' . config('v2board.secure_path', config('v2board.frontend_admin_path', hash('crc32b', config('app.key')))) . '/server/subscribe-monitor', function () {
-    return redirect('/' . config('v2board.secure_path', config('v2board.frontend_admin_path', hash('crc32b', config('app.key')))) . '#/server/subscribe-monitor');
 });
 
 if (!empty(config('v2board.subscribe_path'))) {

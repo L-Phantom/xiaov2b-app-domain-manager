@@ -232,7 +232,7 @@ class ServerService
         array_multisort($tmp, SORT_ASC, $servers);
         $appDomainService = new AppDomainService();
         $servers = array_map(function ($server) use ($user, $appDomainService) {
-            return $appDomainService->applyBehaviorEntranceToServer($user, $server);
+            return $appDomainService->applyAssignedEntranceToServer($user, $server);
         }, $servers);
         $servers = array_filter($servers, function ($server) {
             return (int) ($server['app_domain_hidden'] ?? 0) !== 1;

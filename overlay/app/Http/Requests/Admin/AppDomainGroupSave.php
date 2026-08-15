@@ -18,11 +18,8 @@ class AppDomainGroupSave extends FormRequest
             'user_group_ids.*' => 'integer',
             'plan_ids' => 'nullable|array',
             'plan_ids.*' => 'integer',
-            'risk_levels' => 'nullable|array',
-            'risk_levels.*' => 'string|max:32',
-            'disposition_statuses' => 'nullable|array',
-            'disposition_statuses.*' => 'string|max:32',
             'hide_matched_nodes' => 'nullable|in:0,1',
+            'assignment_only' => 'nullable|in:0,1',
             'remark' => 'nullable|string|max:255',
         ];
     }
@@ -34,6 +31,7 @@ class AppDomainGroupSave extends FormRequest
             'domain.required' => '入口域名不能为空',
             'enable.in' => '启用状态格式不正确',
             'hide_matched_nodes.in' => '隐藏节点开关格式不正确',
+            'assignment_only.in' => '仅分组归属开关格式不正确',
         ];
     }
 }

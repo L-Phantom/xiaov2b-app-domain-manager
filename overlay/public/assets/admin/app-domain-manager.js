@@ -9,6 +9,11 @@
     activeTab: "basic",
     expandedRules: {},
     modalRule: null,
+    globalReplace: { old_host: "", new_host: "", confirmation: "" },
+    replaceHostFilter: "",
+    globalPreview: null,
+    globalHistory: [],
+    replaceBusy: false,
     loading: false
   };
   var styleMounted = false;
@@ -100,9 +105,8 @@
       domain: rule.domain || "",
       user_group_ids: Array.isArray(rule.user_group_ids) ? rule.user_group_ids : [],
       plan_ids: Array.isArray(rule.plan_ids) ? rule.plan_ids : [],
-      risk_levels: Array.isArray(rule.risk_levels) ? rule.risk_levels : [],
-      disposition_statuses: Array.isArray(rule.disposition_statuses) ? rule.disposition_statuses : [],
       hide_matched_nodes: Number(rule.hide_matched_nodes || 0),
+      assignment_only: Number(rule.assignment_only || 0),
       remark: rule.remark || "",
       bindings: Array.isArray(rule.bindings) ? rule.bindings.map(normalizeBinding) : []
     };
@@ -112,19 +116,6 @@
     return normalizeRule({
       enable: 1,
       sort: (state.rules || []).length + 1
-    });
-  }
-
-  function blacklistEntranceRule() {
-    return normalizeRule({
-      name: "建议拉黑专属入口",
-      enable: 1,
-      sort: (state.rules || []).length + 1,
-      domain: "",
-      risk_levels: [],
-      disposition_statuses: ["blacklist_suggested"],
-      hide_matched_nodes: 0,
-      remark: "行为监管标记为建议拉黑后命中；在此绑定要下发的专属入口节点。"
     });
   }
 
@@ -186,6 +177,66 @@
       ".adm-table th{height:42px;background:#f8f9fc;color:#566070;font-size:12px;font-weight:600;text-align:left;padding:0 12px;border-bottom:1px solid #eef0f4;white-space:nowrap;}",
       ".adm-table td{font-size:13px;color:#2f3542;padding:12px;border-bottom:1px solid #f0f2f5;vertical-align:middle;}",
       ".adm-table tr:last-child td{border-bottom:0;}",
+      ".adm-replace-hero{padding:20px 24px 18px;border-bottom:1px solid #eef0f4;background:#fff;}",
+      ".adm-replace-hero-head{display:flex;align-items:flex-start;justify-content:space-between;gap:20px;margin-bottom:18px;}",
+      ".adm-replace-title{font-size:16px;font-weight:600;color:#273142;line-height:1.4;margin-bottom:4px;}",
+      ".adm-replace-subtitle{font-size:12px;color:#7b8494;line-height:1.6;}",
+      ".adm-replace-ready{display:inline-flex;align-items:center;gap:7px;height:28px;padding:0 10px;border-radius:4px;background:#edf8f1;color:#16754a;font-size:12px;white-space:nowrap;}",
+      ".adm-replace-ready:before{content:'';width:7px;height:7px;border-radius:50%;background:#24a36a;}",
+      ".adm-replace-ready.off{background:#fff5e6;color:#946116}.adm-replace-ready.off:before{background:#e5a12b;}",
+      ".adm-replace-steps{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));max-width:720px;}",
+      ".adm-replace-step{display:flex;align-items:center;gap:9px;position:relative;color:#8a93a3;font-size:12px;}",
+      ".adm-replace-step:not(:last-child):after{content:'';height:1px;background:#dfe3ea;position:absolute;left:34px;right:10px;top:13px;z-index:0;}",
+      ".adm-replace-step-dot{width:26px;height:26px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;background:#f1f3f6;color:#7b8494;font-weight:600;position:relative;z-index:1;flex:0 0 auto;}",
+      ".adm-replace-step.active{color:#3150b7;font-weight:500}.adm-replace-step.active .adm-replace-step-dot{background:#5c80ff;color:#fff;}",
+      ".adm-replace-step.done{color:#16754a}.adm-replace-step.done .adm-replace-step-dot{background:#e7f7ed;color:#16754a;}",
+      ".adm-replace-inventory{padding:14px 24px;border-bottom:1px solid #eef0f4;background:#f8fafc;display:flex;align-items:flex-start;gap:18px;}",
+      ".adm-replace-inventory-label{min-width:112px;padding-top:7px;}",
+      ".adm-replace-inventory-title{font-size:12px;font-weight:600;color:#4a5568;margin-bottom:2px;}",
+      ".adm-replace-inventory-meta{font-size:11px;color:#8a93a3;}",
+      ".adm-replace-inventory-main{flex:1;min-width:0;}",
+      ".adm-replace-host-toolbar{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:8px;}",
+      ".adm-replace-host-search{position:relative;max-width:330px;flex:1;}",
+      ".adm-replace-host-search .adm-form-control{height:30px;padding-left:30px;font-size:12px;}",
+      ".adm-replace-host-search i{position:absolute;left:10px;top:8px;color:#9aa2af;font-size:13px;pointer-events:none;}",
+      ".adm-replace-host-count-meta{font-size:11px;color:#8a93a3;white-space:nowrap;}",
+      ".adm-replace-hosts{display:flex;align-items:flex-start;align-content:flex-start;gap:7px;flex-wrap:wrap;min-width:0;max-height:116px;overflow-y:auto;padding:2px 3px 2px 0;scrollbar-width:thin;}",
+      ".adm-replace-host-chip{height:30px;border:1px solid #dfe4ec;border-radius:4px;background:#fff;padding:0 9px;color:#4a5568;font-size:12px;cursor:pointer;display:inline-flex;align-items:center;gap:7px;max-width:260px;}",
+      ".adm-replace-host-chip:hover{border-color:#5c80ff;color:#3150b7}.adm-replace-host-chip code{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}",
+      ".adm-replace-host-count{color:#8a93a3;border-left:1px solid #e6e9ef;padding-left:7px;}",
+      ".adm-replace-host-empty{padding:6px 0;font-size:12px;color:#9aa2af;}",
+      ".adm-replace-form{padding:22px 24px 8px;border-bottom:1px solid #eef0f4;}",
+      ".adm-replace-host-flow{display:grid;grid-template-columns:minmax(220px,1fr) 36px minmax(220px,1fr) auto;gap:12px;align-items:end;}",
+      ".adm-replace-host-flow .adm-field{margin-bottom:14px;}",
+      ".adm-replace-swap{width:32px;padding:0;margin-bottom:14px;}",
+      ".adm-replace-preview-btn{height:34px;margin-bottom:14px;min-width:118px;}",
+      ".adm-replace-safety{display:flex;align-items:center;gap:18px;flex-wrap:wrap;padding:0 24px 16px;border-bottom:1px solid #eef0f4;background:#fff;}",
+      ".adm-replace-safety-item{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:#687386;}",
+      ".adm-replace-safety-item i{color:#24a36a;}",
+      ".adm-replace-warning{padding:11px 24px;border-bottom:1px solid #f4d7a1;background:#fff8e8;color:#8a5b10;font-size:12px;line-height:1.6;}",
+      ".adm-replace-section-head{min-height:52px;padding:0 24px;border-bottom:1px solid #eef0f4;display:flex;align-items:center;justify-content:space-between;gap:16px;}",
+      ".adm-replace-section-title{font-size:14px;font-weight:600;color:#2f3542;}",
+      ".adm-replace-section-meta{font-size:12px;color:#8a93a3;margin-top:2px;}",
+      ".adm-replace-summary{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));border-bottom:1px solid #eef0f4;background:#fbfcfe;}",
+      ".adm-replace-stat{padding:16px 20px;border-right:1px solid #e8ebf0;background:transparent;}",
+      ".adm-replace-stat:last-child{border-right:0;}",
+      ".adm-replace-stat strong{display:block;font-size:21px;color:#273142;margin-bottom:3px;line-height:1.2;}",
+      ".adm-replace-stat span{font-size:12px;color:#7b8494;}",
+      ".adm-replace-types{display:flex;align-items:center;gap:6px;flex-wrap:wrap;}",
+      ".adm-replace-empty{padding:30px 24px 34px;text-align:center;color:#8a93a3;}",
+      ".adm-replace-empty-icon{width:38px;height:38px;margin:0 auto 10px;border-radius:50%;background:#f1f4f8;color:#7b8494;display:flex;align-items:center;justify-content:center;font-size:16px;}",
+      ".adm-replace-empty-title{font-size:13px;font-weight:500;color:#566070;margin-bottom:4px;}",
+      ".adm-replace-empty-meta{font-size:12px;color:#9aa2af;}",
+      ".adm-replace-table{width:100%;border-collapse:collapse;min-width:900px;table-layout:fixed;}",
+      ".adm-replace-table th{height:40px;padding:0 12px;text-align:left;background:#f8f9fc;border-bottom:1px solid #eef0f4;color:#566070;font-size:12px;}",
+      ".adm-replace-table td{padding:10px 12px;border-bottom:1px solid #f0f2f5;color:#2f3542;font-size:13px;word-break:break-all;}",
+      ".adm-replace-arrow{color:#a0a8b5;text-align:center;}",
+      ".adm-replace-confirm{padding:18px 24px;display:grid;grid-template-columns:minmax(280px,1fr) auto;align-items:end;gap:18px;border-top:1px solid #ead9b7;background:#fffbf3;}",
+      ".adm-replace-confirm .adm-field{margin:0;}",
+      ".adm-replace-confirm-note{font-size:12px;color:#8a5b10;margin-bottom:8px;line-height:1.5;}",
+      ".adm-replace-confirm .adm-btn{height:34px;min-width:134px;}",
+      ".adm-history{border-top:12px solid #f1f3f6;}",
+      ".adm-history-batch{font-size:11px;color:#969eaa;margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:190px;}",
       ".adm-table th:nth-child(1),.adm-table td:nth-child(1){width:46px;}",
       ".adm-table th:nth-child(2),.adm-table td:nth-child(2){width:230px;}",
       ".adm-table th:nth-child(3),.adm-table td:nth-child(3){width:96px;}",
@@ -241,7 +292,7 @@
       ".adm-node-table code{font-size:12px;color:#4b5563;}",
       ".adm-port-input{width:92px;height:30px}",
       "@media(min-width:1600px){.adm-page{padding-right:40px}.adm-setting-row{padding:22px 24px}.adm-block-header{padding-left:24px;padding-right:24px}.adm-table-tools{padding-left:24px;padding-right:24px}}",
-      "@media(max-width:900px){.adm-page{padding:0 12px 18px}.adm-tabs{gap:18px;overflow:auto}.adm-setting-row{display:block;padding:16px}.adm-setting-control{width:100%;min-width:0;text-align:left;margin-top:12px}.adm-setting-control .adm-switch-line{justify-content:flex-start}.adm-grid{display:block}.adm-span-2,.adm-span-3,.adm-span-4,.adm-span-6,.adm-span-8,.adm-span-9,.adm-span-12{grid-column:auto}.adm-block-body{padding:0}.adm-actions{width:100%}.adm-form-control.adm-filter{width:100%!important}.adm-scope-summary{max-width:none}.adm-rule-detail-row td{padding:0 12px 14px!important}.adm-node-map{grid-template-columns:1fr;gap:6px}.adm-node-map-arrow{text-align:left}}"
+      "@media(max-width:900px){.adm-page{padding:0 12px 18px}.adm-tabs{gap:18px;overflow:auto}.adm-setting-row{display:block;padding:16px}.adm-setting-control{width:100%;min-width:0;text-align:left;margin-top:12px}.adm-setting-control .adm-switch-line{justify-content:flex-start}.adm-grid{display:block}.adm-span-2,.adm-span-3,.adm-span-4,.adm-span-6,.adm-span-8,.adm-span-9,.adm-span-12{grid-column:auto}.adm-block-body{padding:0}.adm-actions{width:100%}.adm-form-control.adm-filter{width:100%!important}.adm-scope-summary{max-width:none}.adm-rule-detail-row td{padding:0 12px 14px!important}.adm-node-map{grid-template-columns:1fr;gap:6px}.adm-node-map-arrow{text-align:left}.adm-replace-hero{padding:18px 16px 16px}.adm-replace-hero-head{display:block}.adm-replace-ready{margin-top:10px}.adm-replace-steps{grid-template-columns:1fr;gap:8px}.adm-replace-step:not(:last-child):after{display:none}.adm-replace-inventory{padding:12px 16px;display:block}.adm-replace-inventory-label{padding-top:0;margin-bottom:8px}.adm-replace-inventory-main{width:100%}.adm-replace-host-toolbar{align-items:flex-start}.adm-replace-host-search{max-width:none}.adm-replace-host-count-meta{padding-top:8px}.adm-replace-form{padding:18px 16px 4px}.adm-replace-host-flow{grid-template-columns:1fr}.adm-replace-swap{margin:-4px 0 8px;transform:rotate(90deg)}.adm-replace-preview-btn{width:100%}.adm-replace-safety{padding:0 16px 14px}.adm-replace-section-head{padding:0 16px}.adm-replace-summary{grid-template-columns:repeat(2,minmax(0,1fr))}.adm-replace-stat:nth-child(2){border-right:0}.adm-replace-stat:nth-child(-n+2){border-bottom:1px solid #e8ebf0}.adm-replace-confirm{grid-template-columns:1fr;padding:16px}.adm-replace-confirm .adm-btn{width:100%}}"
     ].join("\n");
     document.head.appendChild(style);
   }
@@ -377,14 +428,6 @@
     return text === "全部" ? [] : text.split(" / ");
   }
 
-  function isBehaviorRule(rule) {
-    return !!((rule.risk_levels || []).length || (rule.disposition_statuses || []).length);
-  }
-
-  function ruleSection(rule) {
-    return isBehaviorRule(rule) ? "behavior" : "normal";
-  }
-
   function nodeSummary(rule) {
     var bindings = rule.bindings || [];
     if (!bindings.length) return "未绑定";
@@ -430,31 +473,15 @@
 
   function scopeTags(rule) {
     var options = state.options || {};
-    var riskNames = selectedNames(rule.risk_levels, (options.risk_levels || []).map(function (name) { return { id: name, name: name }; }));
-    var dispositionNames = selectedNames(rule.disposition_statuses, options.disposition_statuses);
     var groupNames = selectedNames(rule.user_group_ids, options.user_groups);
     var planNames = selectedNames(rule.plan_ids, options.plans);
-    var isBlacklistEntrance = (rule.disposition_statuses || []).indexOf("blacklist_suggested") !== -1;
     var primary = [];
     var extra = 0;
     var title = [
       "用户组: " + (groupNames.length ? groupNames.join(" / ") : "全部"),
-      "套餐: " + (planNames.length ? planNames.join(" / ") : "全部"),
-      "风险: " + (riskNames.length ? riskNames.join(" / ") : "全部"),
-      "处置: " + (dispositionNames.length ? dispositionNames.join(" / ") : "全部")
+      "套餐: " + (planNames.length ? planNames.join(" / ") : "全部")
     ].join("\n");
 
-    if (dispositionNames.length) {
-      primary.push(tag("处置 " + dispositionNames.slice(0, 1).join(""), isBlacklistEntrance ? "red" : "gray"));
-      extra += Math.max(dispositionNames.length - 1, 0);
-    }
-    if (riskNames.length) {
-      primary.push(tag("风险 " + riskNames.slice(0, 1).join(""), "gray"));
-      extra += Math.max(riskNames.length - 1, 0);
-    }
-    if (!dispositionNames.length && !riskNames.length) {
-      primary.push(tag("全部行为", "gray"));
-    }
     if (planNames.length) {
       primary.push(tag("套餐 " + planNames.slice(0, 1).join(""), "gray"));
       extra += Math.max(planNames.length - 1, 0);
@@ -462,6 +489,12 @@
     if (groupNames.length) {
       primary.push(tag("组 " + groupNames.slice(0, 1).join(""), "gray"));
       extra += Math.max(groupNames.length - 1, 0);
+    }
+    if (!planNames.length && !groupNames.length) {
+      primary.push(tag("全部用户", "gray"));
+    }
+    if (Number(rule.assignment_only || 0) === 1) {
+      primary.push(tag("仅归属用户", "green"));
     }
     if (Number(rule.hide_matched_nodes || 0) === 1) {
       primary.push(tag("隐藏节点", "red"));
@@ -477,7 +510,6 @@
     var q = String(state.filter || "").trim().toLowerCase();
     var groupId = String(state.groupFilter || "");
     return (state.rules || []).filter(function (rule) {
-      if (section && ruleSection(rule) !== section) return false;
       if (q && [rule.name, rule.domain, rule.remark, nodeSummary(rule)].join(" ").toLowerCase().indexOf(q) === -1) return false;
       if (groupId && rule.user_group_ids.length && rule.user_group_ids.map(String).indexOf(groupId) === -1) return false;
       if (groupId && !rule.user_group_ids.length) return true;
@@ -518,6 +550,110 @@
     ].join("\n");
   }
 
+  function displayReplaceValue(value) {
+    if (value && typeof value === "object") {
+      try { return JSON.stringify(value); } catch (e) { return String(value); }
+    }
+    return String(value == null ? "" : value);
+  }
+
+  function formatTime(timestamp) {
+    if (!timestamp) return "-";
+    var date = new Date(Number(timestamp) * 1000);
+    if (isNaN(date.getTime())) return "-";
+    return date.getFullYear() + "-" + String(date.getMonth() + 1).padStart(2, "0") + "-" + String(date.getDate()).padStart(2, "0") + " " + String(date.getHours()).padStart(2, "0") + ":" + String(date.getMinutes()).padStart(2, "0") + ":" + String(date.getSeconds()).padStart(2, "0");
+  }
+
+  function currentEntranceHosts() {
+    var counts = {};
+    (state.options.nodes || []).forEach(function (node) {
+      var host = normalizeHost(node.host || "");
+      if (!host) return;
+      counts[host] = (counts[host] || 0) + 1;
+    });
+    return Object.keys(counts).map(function (host) {
+      return { host: host, count: counts[host] };
+    }).sort(function (a, b) {
+      return b.count - a.count || a.host.localeCompare(b.host);
+    });
+  }
+
+  function renderCurrentEntranceHosts() {
+    var hosts = currentEntranceHosts();
+    if (!hosts.length) return '<span class="adm-replace-inventory-meta">未读取到节点入口</span>';
+    var query = String(state.replaceHostFilter || "").trim().toLowerCase();
+    var visibleHosts = hosts.filter(function (item) {
+      return !query || item.host.toLowerCase().indexOf(query) !== -1;
+    });
+    var chips = hosts.map(function (item) {
+      var hidden = query && item.host.toLowerCase().indexOf(query) === -1;
+      return '<button class="adm-replace-host-chip" data-replace-host-value="' + escapeHtml(item.host.toLowerCase()) + '" data-replace-old-host="' + escapeHtml(item.host) + '" type="button" title="设为旧入口"' + (hidden ? ' style="display:none"' : '') + '><code>' + escapeHtml(item.host) + '</code><span class="adm-replace-host-count">' + item.count + '</span></button>';
+    }).join("");
+    var empty = '<div class="adm-replace-host-empty" id="adm_replace_host_empty"' + (visibleHosts.length ? ' style="display:none"' : '') + '>没有匹配的入口</div>';
+    return '<div class="adm-replace-inventory-main">' +
+      '<div class="adm-replace-host-toolbar"><label class="adm-replace-host-search"><i class="si si-magnifier"></i><input class="adm-form-control" id="adm_replace_host_search" value="' + escapeHtml(state.replaceHostFilter || "") + '" placeholder="搜索入口域名或 IP" autocomplete="off"></label><span class="adm-replace-host-count-meta" id="adm_replace_host_count">显示 ' + visibleHosts.length + ' / ' + hosts.length + ' 个入口</span></div>' +
+      '<div class="adm-replace-hosts">' + chips + empty + '</div>' +
+      '</div>';
+  }
+
+  function renderGlobalReplaceSteps(preview) {
+    var hasPreview = !!preview;
+    var canApply = hasPreview && Number(preview.total_changes) > 0;
+    return '<div class="adm-replace-steps">' +
+      '<div class="adm-replace-step ' + (hasPreview ? 'done' : 'active') + '"><span class="adm-replace-step-dot">' + (hasPreview ? icon("check") : '1') + '</span><span>选择入口</span></div>' +
+      '<div class="adm-replace-step ' + (canApply ? 'active' : '') + '"><span class="adm-replace-step-dot">2</span><span>核对影响</span></div>' +
+      '<div class="adm-replace-step"><span class="adm-replace-step-dot">3</span><span>确认切换</span></div>' +
+    '</div>';
+  }
+
+  function renderGlobalReplaceTypeCounts(preview) {
+    var counts = preview && preview.type_counts ? preview.type_counts : {};
+    var keys = Object.keys(counts);
+    if (!keys.length) return '';
+    return '<div class="adm-replace-types">' + keys.map(function (key) {
+      return tag(key + ' ' + counts[key], 'gray');
+    }).join('') + '</div>';
+  }
+
+  function renderGlobalReplaceChanges(preview) {
+    var changes = preview && Array.isArray(preview.changes) ? preview.changes : [];
+    if (!changes.length) return '<div class="adm-replace-empty"><div class="adm-replace-empty-icon">' + icon("magnifier") + '</div><div class="adm-replace-empty-title">没有匹配记录</div><div class="adm-replace-empty-meta">节点、入口规则和系统配置中都没有这个旧入口</div></div>';
+    return '<div class="adm-table-wrap"><table class="adm-replace-table"><thead><tr><th style="width:110px">范围</th><th style="width:100px">类型</th><th>节点 / 配置</th><th>当前值</th><th style="width:42px"></th><th>替换后</th></tr></thead><tbody>' + changes.map(function (change) {
+      var scope = change.scope === "node" ? "节点入口" : (change.scope === "config" ? "系统配置" : "域名分发");
+      var name = change.name || (change.table + " #" + change.id);
+      var reference = change.scope === "node" ? ('#' + change.id + ' · ' + change.table) : change.table;
+      return '<tr><td>' + tag(scope, change.scope === "node" ? "green" : "gray") + '</td><td>' + escapeHtml(change.type || "-") + '</td><td><div>' + escapeHtml(name) + '</div><div class="adm-history-batch">' + escapeHtml(reference) + '</div></td><td><code>' + escapeHtml(displayReplaceValue(change.before)) + '</code></td><td class="adm-replace-arrow">' + icon("arrow-right") + '</td><td><code>' + escapeHtml(displayReplaceValue(change.after)) + '</code></td></tr>';
+    }).join("") + '</tbody></table></div>';
+  }
+
+  function renderGlobalReplaceHistory() {
+    var rows = state.globalHistory || [];
+    if (!rows.length) return '<div class="adm-replace-empty"><div class="adm-replace-empty-icon">' + icon("clock") + '</div><div class="adm-replace-empty-title">暂无切换记录</div><div class="adm-replace-empty-meta">成功执行后会保留批次快照，可在这里回滚</div></div>';
+    return '<div class="adm-table-wrap"><table class="adm-replace-table"><thead><tr><th style="width:170px">时间</th><th>旧入口</th><th>新入口</th><th style="width:90px">变更数</th><th style="width:110px">状态</th><th style="width:180px">操作人</th><th style="width:100px">操作</th></tr></thead><tbody>' + rows.map(function (row) {
+      var applied = row.status === "applied";
+      return '<tr><td><div>' + escapeHtml(formatTime(row.created_at)) + '</div><div class="adm-history-batch" title="' + escapeHtml(row.batch_uuid) + '">' + escapeHtml(row.batch_uuid) + '</div></td><td><code>' + escapeHtml(row.old_host) + '</code></td><td><code>' + escapeHtml(row.new_host) + '</code></td><td><strong>' + escapeHtml(row.change_count) + '</strong></td><td>' + tag(applied ? "可回滚" : "已回滚", applied ? "green" : "gray") + '</td><td>' + escapeHtml(row.operator_email || "-") + '</td><td>' + (applied ? '<button class="adm-btn adm-btn-danger adm-replace-rollback" data-batch-uuid="' + escapeHtml(row.batch_uuid) + '" type="button">' + icon("action-undo") + '回滚</button>' : '-') + '</td></tr>';
+    }).join("") + '</tbody></table></div>';
+  }
+
+  function renderGlobalReplace() {
+    var form = state.globalReplace || {};
+    var preview = state.globalPreview;
+    var auditReady = !!state.options.global_replace_audit_table_exists;
+    var total = preview ? Number(preview.total_changes || 0) : 0;
+    return [
+      auditReady ? '' : '<div class="adm-replace-warning">审计表尚未安装。执行迁移后才能使用全局切换；预览接口仍可用于检查影响范围。</div>',
+      '<div class="adm-replace-hero"><div class="adm-replace-hero-head"><div><div class="adm-replace-title">入口域名切换</div><div class="adm-replace-subtitle">批量更新节点入口、域名分发和关联配置</div></div><span class="adm-replace-ready ' + (auditReady ? '' : 'off') + '">' + (auditReady ? '审计与回滚就绪' : '审计表未就绪') + '</span></div>' + renderGlobalReplaceSteps(preview) + '</div>',
+      '<div class="adm-replace-inventory"><div class="adm-replace-inventory-label"><div class="adm-replace-inventory-title">当前节点入口</div><div class="adm-replace-inventory-meta">点击入口即可带入旧值</div></div>' + renderCurrentEntranceHosts() + '</div>',
+      '<div class="adm-replace-form"><div class="adm-replace-host-flow"><div>' + field("旧入口域名", "adm_replace_old_host", form.old_host, "", "old.example.com") + '</div><button class="adm-btn adm-replace-swap" id="adm-replace-swap" type="button" title="交换新旧入口">' + icon("refresh") + '</button><div>' + field("新入口域名", "adm_replace_new_host", form.new_host, "", "new.example.com") + '</div><button class="adm-btn adm-btn-primary adm-replace-preview-btn" id="adm-replace-preview" type="button"' + (state.replaceBusy ? ' disabled' : '') + '>' + icon("eye") + (state.replaceBusy ? '扫描中' : '预览影响') + '</button></div></div>',
+      '<div class="adm-replace-safety"><span class="adm-replace-safety-item">' + icon("check") + '精确匹配 host</span><span class="adm-replace-safety-item">' + icon("check") + '事务执行</span><span class="adm-replace-safety-item">' + icon("check") + '保留批次快照</span><span class="adm-replace-safety-item">' + icon("check") + '冲突时拒绝覆盖</span></div>',
+      '<div class="adm-replace-section-head"><div><div class="adm-replace-section-title">影响预览</div><div class="adm-replace-section-meta">' + (preview ? ('精确匹配 ' + total + ' 条记录') : '尚未扫描数据库') + '</div></div>' + renderGlobalReplaceTypeCounts(preview) + '</div>',
+      preview ? '<div class="adm-replace-summary"><div class="adm-replace-stat"><strong>' + escapeHtml(preview.total_changes) + '</strong><span>全部变更</span></div><div class="adm-replace-stat"><strong>' + escapeHtml(preview.node_changes) + '</strong><span>节点入口</span></div><div class="adm-replace-stat"><strong>' + escapeHtml(preview.distribution_changes) + '</strong><span>域名分发</span></div><div class="adm-replace-stat"><strong>' + escapeHtml(preview.config_changes) + '</strong><span>系统配置</span></div></div>' : '',
+      preview ? renderGlobalReplaceChanges(preview) : '<div class="adm-replace-empty"><div class="adm-replace-empty-icon">' + icon("eye") + '</div><div class="adm-replace-empty-title">等待影响预览</div><div class="adm-replace-empty-meta">选择当前入口，填写新入口后开始扫描</div></div>',
+      preview && total > 0 ? '<div class="adm-replace-confirm"><div><div class="adm-replace-confirm-note">确认新域名已完成解析。输入新入口域名后才能执行。</div><div class="adm-field"><label class="adm-form-label" for="adm_replace_confirmation">执行确认</label><input class="adm-form-control" id="adm_replace_confirmation" value="' + escapeHtml(form.confirmation || "") + '" placeholder="输入 ' + escapeHtml(preview.new_host) + '"></div></div><button class="adm-btn adm-btn-primary" id="adm-replace-apply" type="button" disabled>' + icon("check") + '执行 ' + total + ' 条切换</button></div>' : '',
+      '<div class="adm-history"><div class="adm-replace-section-head"><div><div class="adm-replace-section-title">切换历史</div><div class="adm-replace-section-meta">最近 20 个操作批次</div></div><button class="adm-btn" id="adm-replace-history-refresh" type="button">' + icon("refresh") + '刷新</button></div>' + renderGlobalReplaceHistory() + '</div>'
+    ].join("");
+  }
+
   function mappingToggle(rule, labels, expanded) {
     if (!labels.length) return tag("未绑定", "gray");
     return '<button class="adm-node-toggle" type="button" data-rule-toggle="' + escapeHtml(rule.id) + '">' +
@@ -547,14 +683,6 @@
       }
       return row;
     }).join("");
-  }
-
-  function renderRuleGuide() {
-    return '<div class="adm-rule-guide">' +
-      '<div class="adm-rule-guide-main"><div class="adm-rule-guide-title">黑名单用户专属入口</div>' +
-      '<div class="adm-help">行为监管里把账号标记为“建议拉黑”后，可在这里用入口组给这部分用户下发独立域名和端口；未标记用户不会命中。</div></div>' +
-      '<button class="adm-btn" id="adm-rule-blacklist-template" type="button">' + icon("plus") + '创建黑名单入口组</button>' +
-    '</div>';
   }
 
   function renderRuleSection(key, title, description) {
@@ -628,9 +756,7 @@
       '      <div class="adm-span-12"><div class="adm-modal-switches">' + switchInline("启用", "adm_rule_enable_input", rule.enable) + '</div></div>',
       '      <div class="adm-span-12"><label class="adm-form-label">用户组</label>' + renderCheckboxes("adm_rule_groups", options.user_groups || [], rule.user_group_ids) + '</div>',
       '      <div class="adm-span-12"><label class="adm-form-label">套餐</label>' + renderCheckboxes("adm_rule_plans", options.plans || [], rule.plan_ids) + '</div>',
-      '      <div class="adm-span-12"><label class="adm-form-label">风险等级</label>' + renderCheckboxes("adm_rule_risk_levels", (options.risk_levels || []).map(function (name) { return { id: name, name: name }; }), rule.risk_levels) + '</div>',
-      '      <div class="adm-span-12"><label class="adm-form-label">处置状态</label>' + renderCheckboxes("adm_rule_dispositions", options.disposition_statuses || [], rule.disposition_statuses) + '</div>',
-      '      <div class="adm-span-12"><div class="adm-modal-switches">' + switchInline("命中后隐藏绑定节点", "adm_rule_hide_nodes", rule.hide_matched_nodes) + '<span class="adm-help">用于极危险/隔离策略，不向命中的用户下发这些敏感节点</span></div></div>',
+      '      <div class="adm-span-12"><div class="adm-modal-switches">' + switchInline("仅按用户归属命中", "adm_rule_assignment_only", rule.assignment_only) + switchInline("命中后隐藏绑定节点", "adm_rule_hide_nodes", rule.hide_matched_nodes) + '</div></div>',
       '      <div class="adm-span-12"><label class="adm-form-label">节点入口</label>' + renderNodeBindings(rule) + '</div>',
       '    </div></div>',
       '    <div class="adm-modal-foot"><button class="adm-btn" id="adm-modal-cancel">取消</button><button class="adm-btn adm-btn-primary" id="adm-rule-save">' + icon("check") + '保存</button></div>',
@@ -650,14 +776,13 @@
       '<div class="adm-page" id="adm-panel">',
       '  <div class="adm-page-head"><div class="adm-status" id="adm-status"></div><div class="adm-actions"><button class="adm-btn" id="adm-refresh-btn">' + icon("refresh") + '刷新</button></div></div>',
       '  <div class="adm-native-block block border-bottom">',
-      '    <div class="adm-tabs"><button class="adm-tab ' + (activeTab === "basic" ? "active" : "") + '" data-adm-tab="basic">基础</button><button class="adm-tab ' + (activeTab === "rules" ? "active" : "") + '" data-adm-tab="rules">入口规则</button><button class="adm-tab ' + (activeTab === "api" ? "active" : "") + '" data-adm-tab="api">API 域名池</button></div>',
+      '    <div class="adm-tabs"><button class="adm-tab ' + (activeTab === "basic" ? "active" : "") + '" data-adm-tab="basic">基础</button><button class="adm-tab ' + (activeTab === "rules" ? "active" : "") + '" data-adm-tab="rules">入口规则</button><button class="adm-tab ' + (activeTab === "global" ? "active" : "") + '" data-adm-tab="global">全局切换</button><button class="adm-tab ' + (activeTab === "api" ? "active" : "") + '" data-adm-tab="api">API 域名池</button></div>',
       '    <div class="adm-tab-panel ' + (activeTab === "basic" ? "active" : "") + '" data-adm-panel="basic">' + renderConfig(config) + '</div>',
       '    <div class="adm-tab-panel ' + (activeTab === "rules" ? "active" : "") + '" data-adm-panel="rules">',
-      renderRuleGuide(),
       '      <div class="adm-table-tools"><div class="adm-actions"><input class="adm-form-control adm-filter" style="width:220px" id="adm-rule-filter" value="' + escapeHtml(state.filter) + '" placeholder="搜索规则"><select class="adm-form-control adm-filter" style="width:160px" id="adm-group-filter">' + renderGroupOptions() + '</select></div><button class="adm-btn adm-btn-primary" id="adm-rule-add">' + icon("plus") + '添加规则</button></div>',
-      renderRuleSection("behavior", "行为处置入口", "按行为监管风险等级或处置状态命中，可作用于普通订阅和 App 订阅。"),
-      renderRuleSection("normal", "普通入口规则", "不带风险/处置条件，仅用于常规 App 入口分发。"),
+      renderRuleSection("", "入口规则", ""),
       '    </div>',
+      '    <div class="adm-tab-panel ' + (activeTab === "global" ? "active" : "") + '" data-adm-panel="global">' + renderGlobalReplace() + '</div>',
       '    <div class="adm-tab-panel ' + (activeTab === "api" ? "active" : "") + '" data-adm-panel="api">' + renderApiConfig(config) + '</div>',
       '  </div>',
       '</div>',
@@ -720,9 +845,8 @@
       domain: normalizeHost((document.getElementById("adm_rule_domain") || {}).value || ""),
       user_group_ids: selectedValues("adm_rule_groups"),
       plan_ids: selectedValues("adm_rule_plans"),
-      risk_levels: selectedRawValues("adm_rule_risk_levels"),
-      disposition_statuses: selectedRawValues("adm_rule_dispositions"),
       hide_matched_nodes: checked("adm_rule_hide_nodes"),
+      assignment_only: checked("adm_rule_assignment_only"),
       remark: (document.getElementById("adm_rule_remark") || {}).value || ""
     };
   }
@@ -770,6 +894,136 @@
     });
   }
 
+  function collectGlobalReplaceForm() {
+    var oldHost = document.getElementById("adm_replace_old_host");
+    var newHost = document.getElementById("adm_replace_new_host");
+    var confirmation = document.getElementById("adm_replace_confirmation");
+    state.globalReplace = {
+      old_host: normalizeHost(oldHost ? oldHost.value : state.globalReplace.old_host),
+      new_host: normalizeHost(newHost ? newHost.value : state.globalReplace.new_host),
+      confirmation: String(confirmation ? confirmation.value : state.globalReplace.confirmation || "").trim()
+    };
+    return state.globalReplace;
+  }
+
+  function updateGlobalReplaceApplyState() {
+    var button = document.getElementById("adm-replace-apply");
+    if (!button) return;
+    var confirmation = String((document.getElementById("adm_replace_confirmation") || {}).value || "").trim();
+    var preview = state.globalPreview;
+    var oldHost = normalizeHost((document.getElementById("adm_replace_old_host") || {}).value || "");
+    var newHost = normalizeHost((document.getElementById("adm_replace_new_host") || {}).value || "");
+    var auditReady = !!state.options.global_replace_audit_table_exists;
+    button.disabled = !auditReady || state.replaceBusy || !preview || confirmation !== preview.new_host || oldHost !== preview.old_host || newHost !== preview.new_host;
+  }
+
+  function invalidateGlobalReplacePreview() {
+    if (!state.globalPreview) return;
+    var oldHost = normalizeHost((document.getElementById("adm_replace_old_host") || {}).value || "");
+    var newHost = normalizeHost((document.getElementById("adm_replace_new_host") || {}).value || "");
+    if (oldHost !== state.globalPreview.old_host || newHost !== state.globalPreview.new_host) {
+      updateGlobalReplaceApplyState();
+      setStatus("入口域名已修改，请重新预览影响范围", "error");
+    }
+  }
+
+  function previewGlobalReplace() {
+    var form = collectGlobalReplaceForm();
+    if (!form.old_host || !form.new_host) {
+      setStatus("旧入口域名和新入口域名都不能为空", "error");
+      return;
+    }
+    state.replaceBusy = true;
+    setStatus("正在扫描节点和域名分发配置...");
+    request("POST", "/server/app-domain/global-replace/preview", {
+      old_host: form.old_host,
+      new_host: form.new_host
+    }).then(function (response) {
+      state.globalPreview = response.data || null;
+      state.globalReplace.confirmation = "";
+      state.replaceBusy = false;
+      renderPage();
+      setStatus(state.globalPreview && state.globalPreview.total_changes ? "预览完成，请核对后确认执行" : "预览完成，没有匹配记录", state.globalPreview && state.globalPreview.total_changes ? "success" : "");
+    }).catch(function (error) {
+      state.replaceBusy = false;
+      setStatus(error.message || "预览失败", "error");
+    });
+  }
+
+  function applyGlobalReplace() {
+    var form = collectGlobalReplaceForm();
+    var preview = state.globalPreview;
+    if (!preview || !preview.preview_token) {
+      setStatus("请先重新预览", "error");
+      return;
+    }
+    if (form.old_host !== preview.old_host || form.new_host !== preview.new_host) {
+      setStatus("入口域名已修改，请重新预览后再执行", "error");
+      return;
+    }
+    if (form.confirmation !== preview.new_host) {
+      setStatus("确认内容必须与新入口域名完全一致", "error");
+      return;
+    }
+    if (!window.confirm("将立即修改 " + preview.total_changes + " 条入口记录。确认新域名已完成解析并继续？")) return;
+
+    state.replaceBusy = true;
+    setStatus("正在执行全局切换...");
+    request("POST", "/server/app-domain/global-replace/apply", {
+      old_host: preview.old_host,
+      new_host: preview.new_host,
+      preview_token: preview.preview_token,
+      confirmation: form.confirmation
+    }).then(function (response) {
+      var result = response.data || {};
+      state.globalReplace = { old_host: result.new_host || preview.new_host, new_host: "", confirmation: "" };
+      state.globalPreview = null;
+      state.replaceBusy = false;
+      return loadAll(true).then(function () {
+        setStatus("全局切换已完成，批次 " + (result.batch_uuid || ""), "success");
+      });
+    }).catch(function (error) {
+      state.replaceBusy = false;
+      setStatus(error.message || "全局切换失败", "error");
+    });
+  }
+
+  function refreshGlobalReplaceHistory() {
+    setStatus("正在刷新切换历史...");
+    request("GET", "/server/app-domain/global-replace/history").then(function (response) {
+      state.globalHistory = response.data || [];
+      renderPage();
+      setStatus("");
+    }).catch(function (error) {
+      setStatus(error.message || "历史记录加载失败", "error");
+    });
+  }
+
+  function rollbackGlobalReplace(batchUuid) {
+    var confirmation = window.prompt("回滚会恢复该批次的所有入口记录。请输入批次号确认：\n" + batchUuid, "");
+    if (confirmation === null) return;
+    confirmation = String(confirmation || "").trim();
+    if (confirmation !== batchUuid) {
+      setStatus("批次号输入不一致，未执行回滚", "error");
+      return;
+    }
+    state.replaceBusy = true;
+    setStatus("正在检查冲突并回滚...");
+    request("POST", "/server/app-domain/global-replace/rollback", {
+      batch_uuid: batchUuid,
+      confirmation: confirmation
+    }).then(function (response) {
+      state.globalPreview = null;
+      state.replaceBusy = false;
+      return loadAll(true).then(function () {
+        setStatus("批次 " + batchUuid + " 已回滚，共恢复 " + ((response.data || {}).restored_changes || 0) + " 条记录", "success");
+      });
+    }).catch(function (error) {
+      state.replaceBusy = false;
+      setStatus(error.message || "回滚失败", "error");
+    });
+  }
+
   function bindEvents() {
     var refresh = document.getElementById("adm-refresh-btn");
     if (refresh) refresh.addEventListener("click", function () {
@@ -803,12 +1057,6 @@
     if (groupFilter) groupFilter.addEventListener("change", function () { state.groupFilter = groupFilter.value; refreshRuleTable(); });
     var add = document.getElementById("adm-rule-add");
     if (add) add.addEventListener("click", function () { state.modalRule = emptyRule(); renderPage(); });
-    var blacklistTemplate = document.getElementById("adm-rule-blacklist-template");
-    if (blacklistTemplate) blacklistTemplate.addEventListener("click", function () {
-      state.modalRule = blacklistEntranceRule();
-      renderPage();
-      setStatus("请填写专属入口域名，并选择需要隔离下发的节点", "success");
-    });
     bindRuleRows();
     var close = document.getElementById("adm-modal-close");
     var cancel = document.getElementById("adm-modal-cancel");
@@ -816,16 +1064,63 @@
     if (close) close.addEventListener("click", closeModal);
     if (cancel) cancel.addEventListener("click", closeModal);
     if (save) save.addEventListener("click", saveRuleForm);
+    var replacePreview = document.getElementById("adm-replace-preview");
+    var replaceApply = document.getElementById("adm-replace-apply");
+    var replaceSwap = document.getElementById("adm-replace-swap");
+    var replaceOldHost = document.getElementById("adm_replace_old_host");
+    var replaceNewHost = document.getElementById("adm_replace_new_host");
+    var replaceConfirmation = document.getElementById("adm_replace_confirmation");
+    var replaceHostSearch = document.getElementById("adm_replace_host_search");
+    var historyRefresh = document.getElementById("adm-replace-history-refresh");
+    if (replacePreview) replacePreview.addEventListener("click", previewGlobalReplace);
+    if (replaceApply) replaceApply.addEventListener("click", applyGlobalReplace);
+    if (replaceOldHost) replaceOldHost.addEventListener("input", invalidateGlobalReplacePreview);
+    if (replaceNewHost) replaceNewHost.addEventListener("input", invalidateGlobalReplacePreview);
+    if (replaceConfirmation) replaceConfirmation.addEventListener("input", updateGlobalReplaceApplyState);
+    if (replaceHostSearch) replaceHostSearch.addEventListener("input", function () {
+      state.replaceHostFilter = String(replaceHostSearch.value || "").trim().toLowerCase();
+      var visible = 0;
+      Array.prototype.slice.call(document.querySelectorAll("[data-replace-host-value]")).forEach(function (button) {
+        var matched = !state.replaceHostFilter || String(button.getAttribute("data-replace-host-value") || "").indexOf(state.replaceHostFilter) !== -1;
+        button.style.display = matched ? "" : "none";
+        if (matched) visible += 1;
+      });
+      var count = document.getElementById("adm_replace_host_count");
+      if (count) count.textContent = "显示 " + visible + " / " + currentEntranceHosts().length + " 个入口";
+      var empty = document.getElementById("adm_replace_host_empty");
+      if (empty) empty.style.display = visible ? "none" : "block";
+    });
+    if (replaceSwap) replaceSwap.addEventListener("click", function () {
+      var oldValue = replaceOldHost ? replaceOldHost.value : "";
+      var newValue = replaceNewHost ? replaceNewHost.value : "";
+      if (replaceOldHost) replaceOldHost.value = newValue;
+      if (replaceNewHost) replaceNewHost.value = oldValue;
+      state.globalReplace.old_host = normalizeHost(newValue);
+      state.globalReplace.new_host = normalizeHost(oldValue);
+      invalidateGlobalReplacePreview();
+    });
+    Array.prototype.slice.call(document.querySelectorAll("[data-replace-old-host]")).forEach(function (button) {
+      button.addEventListener("click", function () {
+        var host = String(button.getAttribute("data-replace-old-host") || "");
+        if (replaceOldHost) replaceOldHost.value = host;
+        state.globalReplace.old_host = host;
+        invalidateGlobalReplacePreview();
+        if (replaceNewHost) replaceNewHost.focus();
+      });
+    });
+    updateGlobalReplaceApplyState();
+    if (historyRefresh) historyRefresh.addEventListener("click", refreshGlobalReplaceHistory);
+    Array.prototype.slice.call(document.querySelectorAll(".adm-replace-rollback")).forEach(function (button) {
+      button.addEventListener("click", function () { rollbackGlobalReplace(String(button.getAttribute("data-batch-uuid") || "")); });
+    });
     bindNodeTools();
   }
 
   function refreshRuleTable() {
     var panel = document.querySelector('[data-adm-panel="rules"]');
     if (!panel) return;
-    var behaviorSection = panel.querySelector('[data-rule-section="behavior"]');
-    var normalSection = panel.querySelector('[data-rule-section="normal"]');
-    if (behaviorSection) behaviorSection.outerHTML = renderRuleSection("behavior", "行为处置入口", "按行为监管风险等级或处置状态命中，可作用于普通订阅和 App 订阅。");
-    if (normalSection) normalSection.outerHTML = renderRuleSection("normal", "普通入口规则", "不带风险/处置条件，仅用于常规 App 入口分发。");
+    var ruleSection = panel.querySelector('[data-rule-section=""]');
+    if (ruleSection) ruleSection.outerHTML = renderRuleSection("", "入口规则", "");
     bindRuleRows();
   }
 
@@ -950,9 +1245,8 @@
       domain: rule.domain,
       user_group_ids: rule.user_group_ids || [],
       plan_ids: rule.plan_ids || [],
-      risk_levels: rule.risk_levels || [],
-      disposition_statuses: rule.disposition_statuses || [],
       hide_matched_nodes: Number(rule.hide_matched_nodes || 0),
+      assignment_only: Number(rule.assignment_only || 0),
       remark: rule.remark || ""
     };
     setStatus("保存中...");
@@ -1017,11 +1311,13 @@
     loadingPromise = Promise.all([
       request("GET", "/server/app-domain/config"),
       request("GET", "/server/app-domain/groups"),
-      request("GET", "/server/app-domain/options")
+      request("GET", "/server/app-domain/options"),
+      request("GET", "/server/app-domain/global-replace/history")
     ]).then(function (responses) {
       state.config = normalizeConfig(responses[0].data || {});
       state.rules = (responses[1].data || []).map(normalizeRule);
       state.options = responses[2].data || {};
+      state.globalHistory = responses[3].data || [];
       renderPage();
       setStatus("");
     }).catch(function (error) {

@@ -8,7 +8,6 @@ use App\Protocols\Singbox\Singbox;
 use App\Protocols\Singbox\SingboxOld;
 use App\Protocols\ClashMeta;
 use App\Services\ServerService;
-use App\Services\SubscribeMonitorService;
 use App\Services\UserService;
 use App\Utils\Helper;
 use Illuminate\Http\Request;
@@ -23,9 +22,8 @@ class ClientController extends Controller
         if ($userService->isAvailable($user)) {
             $serverService = new ServerService();
             $servers = $serverService->getAvailableServers($user);
-            return $this->buildSubscribeResponse($request, $user, $servers, 'client_subscribe');
+            return $this->buildSubscribeResponse($request, $user, $servers);
         }
-        $this->recordSubscribeAccess($request, $user, 'client_subscribe', ['status' => 0]);
     }
 
     public function subscribeForApp(Request $request)
@@ -35,18 +33,15 @@ class ClientController extends Controller
         if ($userService->isAvailable($user)) {
             $serverService = new ServerService();
             $servers = $serverService->getAvailableAppServers($user);
-            return $this->buildSubscribeResponse($request, $user, $servers, 'app_subscribe');
+            return $this->buildSubscribeResponse($request, $user, $servers);
         }
-        $this->recordSubscribeAccess($request, $user, 'app_subscribe', ['status' => 0]);
     }
 
-    private function buildSubscribeResponse(Request $request, $user, array $servers, string $subscribeType)
+    private function buildSubscribeResponse(Request $request, $user, array $servers)
     {
         $flag = $request->input('flag')
             ?? ($_SERVER['HTTP_USER_AGENT'] ?? '');
         $flag = strtolower($flag);
-        $recordType = strpos($flag, 'app_meta') !== false ? 'app_meta' : $subscribeType;
-        $this->recordSubscribeAccess($request, $user, $recordType, ['flag' => $flag, 'status' => 1]);
         if($flag) {
             if (strpos($flag, 'app_meta') !== false) {
                 $class = new ClashMeta($user, $servers, [
@@ -80,11 +75,6 @@ class ClientController extends Controller
         }
         $class = new General($user, $servers);
         return $class->handle();
-    }
-
-    private function recordSubscribeAccess(Request $request, $user, string $type, array $context = []): void
-    {
-        (new SubscribeMonitorService())->record($request, $user, $type, $context);
     }
 
     private function setSubscribeInfoToServers(&$servers, $user)

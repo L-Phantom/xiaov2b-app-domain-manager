@@ -48,7 +48,7 @@ if [[ -n "$extra_files" ]]; then
 fi
 
 echo "=== Syntax checks ==="
-bash -n install.sh verify.sh uninstall.sh scripts/package_release.sh scripts/update_ip2region_xdb.sh
+bash -n install.sh verify.sh uninstall.sh scripts/package_release.sh
 PHP_BIN=""
 if command -v php82 >/dev/null 2>&1; then
   PHP_BIN="php82"
@@ -78,15 +78,15 @@ rsync -a \
   --exclude='dist/' \
   --exclude='platform/' \
   --exclude='.DS_Store' \
-  README.md MAINTENANCE.md NATIVE_REFACTOR_PLAN.md PUBLISH_EXAMPLE.txt \
-  install.sh uninstall.sh verify.sh manifest.txt overlay scripts sql \
+  README.md MAINTENANCE.md PRODUCTION_RUNBOOK.md NATIVE_REFACTOR_PLAN.md PUBLISH_EXAMPLE.txt \
+  install.sh uninstall.sh verify.sh manifest.txt retired-manifest.txt overlay scripts sql \
   "$PACKAGE_DIR/"
 
 echo "=== Writing checksums ==="
 (
   cd "$PACKAGE_DIR"
   find overlay scripts sql -type f -print | sort | xargs shasum -a 256 > MANIFEST-SHA256.txt
-  shasum -a 256 install.sh uninstall.sh verify.sh manifest.txt README.md MAINTENANCE.md > ROOT-SHA256.txt
+  shasum -a 256 install.sh uninstall.sh verify.sh manifest.txt retired-manifest.txt README.md MAINTENANCE.md PRODUCTION_RUNBOOK.md > ROOT-SHA256.txt
 )
 
 tar -C "$OUT_DIR" -czf "$TARBALL" "$PACKAGE_NAME"

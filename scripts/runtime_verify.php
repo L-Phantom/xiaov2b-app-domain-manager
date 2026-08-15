@@ -21,6 +21,7 @@ $result = [
         'app_domain_service_exists' => class_exists(\App\Services\AppDomainService::class),
         'app_domain_group_model_exists' => class_exists(\App\Models\AppDomainGroup::class),
         'app_domain_binding_model_exists' => class_exists(\App\Models\AppDomainBinding::class),
+        'app_domain_assignment_model_exists' => class_exists(\App\Models\AppDomainAssignment::class),
         'app_domain_rule_model_exists' => class_exists(\App\Models\AppDomainRule::class),
     ],
     'config' => [
@@ -38,23 +39,12 @@ $result = [
         'count' => \Illuminate\Support\Facades\Schema::hasTable('v2_app_domain_rules') ? \App\Models\AppDomainRule::count() : null,
         'groups_table_exists' => \Illuminate\Support\Facades\Schema::hasTable('v2_app_domain_groups'),
         'bindings_table_exists' => \Illuminate\Support\Facades\Schema::hasTable('v2_app_domain_bindings'),
-        'groups_has_risk_levels' => \Illuminate\Support\Facades\Schema::hasTable('v2_app_domain_groups') && \Illuminate\Support\Facades\Schema::hasColumn('v2_app_domain_groups', 'risk_levels'),
-        'groups_has_disposition_statuses' => \Illuminate\Support\Facades\Schema::hasTable('v2_app_domain_groups') && \Illuminate\Support\Facades\Schema::hasColumn('v2_app_domain_groups', 'disposition_statuses'),
+        'assignments_table_exists' => \Illuminate\Support\Facades\Schema::hasTable('v2_app_domain_assignments'),
+        'active_assignment_count' => \Illuminate\Support\Facades\Schema::hasTable('v2_app_domain_assignments') ? \App\Models\AppDomainAssignment::where('enable', 1)->count() : null,
+        'global_replace_batches_table_exists' => \Illuminate\Support\Facades\Schema::hasTable('v2_app_domain_replace_batches'),
+        'global_replace_batch_count' => \Illuminate\Support\Facades\Schema::hasTable('v2_app_domain_replace_batches') ? \Illuminate\Support\Facades\DB::table('v2_app_domain_replace_batches')->count() : null,
         'groups_has_hide_matched_nodes' => \Illuminate\Support\Facades\Schema::hasTable('v2_app_domain_groups') && \Illuminate\Support\Facades\Schema::hasColumn('v2_app_domain_groups', 'hide_matched_nodes'),
-        'subscribe_ip_cache_has_asn' => \Illuminate\Support\Facades\Schema::hasTable('v2_subscribe_ip_cache') && \Illuminate\Support\Facades\Schema::hasColumn('v2_subscribe_ip_cache', 'asn'),
-        'subscribe_ip_cache_has_network_type' => \Illuminate\Support\Facades\Schema::hasTable('v2_subscribe_ip_cache') && \Illuminate\Support\Facades\Schema::hasColumn('v2_subscribe_ip_cache', 'network_type'),
-        'subscribe_ip_cache_has_ip_risk_type' => \Illuminate\Support\Facades\Schema::hasTable('v2_subscribe_ip_cache') && \Illuminate\Support\Facades\Schema::hasColumn('v2_subscribe_ip_cache', 'ip_risk_type'),
-        'subscribe_dispositions_table_exists' => \Illuminate\Support\Facades\Schema::hasTable('v2_subscribe_dispositions'),
-        'subscribe_disposition_logs_table_exists' => \Illuminate\Support\Facades\Schema::hasTable('v2_subscribe_disposition_logs'),
-        'subscribe_risk_snapshots_table_exists' => \Illuminate\Support\Facades\Schema::hasTable('v2_subscribe_risk_snapshots'),
-        'subscribe_disposition_count' => \Illuminate\Support\Facades\Schema::hasTable('v2_subscribe_dispositions') ? \Illuminate\Support\Facades\DB::table('v2_subscribe_dispositions')->count() : null,
-        'subscribe_risk_snapshot_count' => \Illuminate\Support\Facades\Schema::hasTable('v2_subscribe_risk_snapshots') ? \Illuminate\Support\Facades\DB::table('v2_subscribe_risk_snapshots')->count() : null,
-        'subscribe_ip_cache_count' => \Illuminate\Support\Facades\Schema::hasTable('v2_subscribe_ip_cache') ? \Illuminate\Support\Facades\DB::table('v2_subscribe_ip_cache')->count() : null,
-        'subscribe_ip_intelligence_count' => \Illuminate\Support\Facades\Schema::hasTable('v2_subscribe_ip_cache') ? \Illuminate\Support\Facades\DB::table('v2_subscribe_ip_cache')->where(function ($query) {
-            $query->whereNotNull('asn')
-                ->orWhereNotNull('as_name')
-                ->orWhereNotNull('ip_risk_type');
-        })->count() : null,
+        'groups_has_assignment_only' => \Illuminate\Support\Facades\Schema::hasTable('v2_app_domain_groups') && \Illuminate\Support\Facades\Schema::hasColumn('v2_app_domain_groups', 'assignment_only'),
         'group_count' => \Illuminate\Support\Facades\Schema::hasTable('v2_app_domain_groups') ? \App\Models\AppDomainGroup::count() : null,
         'binding_count' => \Illuminate\Support\Facades\Schema::hasTable('v2_app_domain_bindings') ? \App\Models\AppDomainBinding::count() : null,
     ],
@@ -65,7 +55,16 @@ $result = [
     ],
 ];
 
-$user = \App\Models\User::where('banned', 0)->orderBy('id')->first();
+$user = null;
+if (\Illuminate\Support\Facades\Schema::hasTable('v2_app_domain_assignments')) {
+    $assignedUserId = \Illuminate\Support\Facades\DB::table('v2_app_domain_assignments')
+        ->where('enable', 1)
+        ->orderBy('id')
+        ->value('user_id');
+    if ($assignedUserId) {
+        $user = \App\Models\User::where('id', (int) $assignedUserId)->where('banned', 0)->first();
+    }
+}
 if ($user) {
     $serverService = new \App\Services\ServerService();
     $appDomainService = new \App\Services\AppDomainService();

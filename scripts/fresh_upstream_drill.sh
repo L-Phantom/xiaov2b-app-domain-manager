@@ -3,7 +3,7 @@ set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 UPSTREAM_URL="${UPSTREAM_URL:-https://github.com/wyx2685/v2board.git}"
-UPSTREAM_REF="${UPSTREAM_REF:-e384825b}"
+UPSTREAM_REF="${UPSTREAM_REF:-858effa102656df146b1bdde0a9387405ee92cc3}"
 UPSTREAM_LOCAL_PATH="${UPSTREAM_LOCAL_PATH:-}"
 WORK_ROOT="${WORK_ROOT:-${TMPDIR:-/tmp}/xiaov2b-app-domain-drill-$(date +%Y%m%d-%H%M%S)}"
 TARGET_DIR="$WORK_ROOT/v2board"
@@ -15,7 +15,7 @@ Usage:
 
 Environment:
   UPSTREAM_URL   Upstream v2board/xiaov2b git URL.
-  UPSTREAM_REF   Upstream commit/branch/tag. Defaults to e384825b.
+  UPSTREAM_REF   Upstream commit/branch/tag. Defaults to the verified latest commit.
   UPSTREAM_LOCAL_PATH  Existing local upstream checkout to copy instead of clone.
   WORK_ROOT      Drill workspace. Defaults to a temporary path.
 

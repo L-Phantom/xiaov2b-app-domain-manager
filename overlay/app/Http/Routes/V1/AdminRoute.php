@@ -47,14 +47,10 @@ class AdminRoute
             $router->post('/server/app-domain/rule/drop', 'V1\\Admin\\Server\\AppDomainController@dropRule');
             $router->post('/server/app-domain/rule/sort', 'V1\\Admin\\Server\\AppDomainController@sortRule');
             $router->get ('/server/app-domain/options', 'V1\\Admin\\Server\\AppDomainController@options');
-            $router->get ('/server/subscribe-monitor/fetch', 'V1\\Admin\\Server\\SubscribeMonitorController@fetch');
-            $router->get ('/server/subscribe-monitor/config', 'V1\\Admin\\Server\\SubscribeMonitorController@config');
-            $router->post('/server/subscribe-monitor/config', 'V1\\Admin\\Server\\SubscribeMonitorController@saveConfig');
-            $router->post('/server/subscribe-monitor/snapshots/rebuild', 'V1\\Admin\\Server\\SubscribeMonitorController@rebuildSnapshots');
-            $router->post('/server/subscribe-monitor/disposition', 'V1\\Admin\\Server\\SubscribeMonitorController@disposition');
-            $router->get ('/server/subscribe-monitor/disposition/logs', 'V1\\Admin\\Server\\SubscribeMonitorController@dispositionLogs');
-            $router->post('/server/subscribe-monitor/profile/clear', 'V1\\Admin\\Server\\SubscribeMonitorController@clearProfile');
-            $router->get ('/server/subscribe-monitor/dispatch-preview', 'V1\\Admin\\Server\\SubscribeMonitorController@dispatchPreview');
+            $router->post('/server/app-domain/global-replace/preview', 'V1\\Admin\\Server\\AppDomainController@previewGlobalReplace');
+            $router->post('/server/app-domain/global-replace/apply', 'V1\\Admin\\Server\\AppDomainController@applyGlobalReplace');
+            $router->get ('/server/app-domain/global-replace/history', 'V1\\Admin\\Server\\AppDomainController@globalReplaceHistory');
+            $router->post('/server/app-domain/global-replace/rollback', 'V1\\Admin\\Server\\AppDomainController@rollbackGlobalReplace');
             $router->group([
                 'prefix' => 'server/trojan'
             ], function ($router) {

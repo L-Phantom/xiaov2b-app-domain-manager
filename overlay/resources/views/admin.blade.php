@@ -31,8 +31,7 @@
 <script src="/assets/admin/vendors.async.js?v={{$asset_version ?? $version}}"></script>
 <script src="/assets/admin/components.async.js?v={{$asset_version ?? $version}}"></script>
 <script src="/assets/admin/umi.js?v={{$asset_version ?? $version}}"></script>
-<script src="/assets/admin/app-domain-manager.js?v={{$asset_version ?? $version}}"></script>
-<script src="/assets/admin/subscribe-monitor-manager.js?v={{$asset_version ?? $version}}"></script>
+<script src="/assets/admin/app-domain-manager.js?v=20260808-host-picker-1"></script>
 </body>
 
 </html>

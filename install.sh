@@ -5,8 +5,8 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 TARGET_DIR=""
 DRY_RUN=0
 MANIFEST_FILE="$ROOT_DIR/manifest.txt"
+RETIRED_MANIFEST_FILE="$ROOT_DIR/retired-manifest.txt"
 OVERLAY_DIR="$ROOT_DIR/overlay"
-IP2REGION_XDB_URL="${IP2REGION_XDB_URL:-https://raw.githubusercontent.com/lionsoul2014/ip2region/master/data/ip2region_v4.xdb}"
 
 for arg in "$@"; do
   case "$arg" in
@@ -83,43 +83,6 @@ hash_file() {
   fi
 }
 
-install_ip2region_xdb() {
-  local dest_dir="$TARGET_DIR/storage/ip2region"
-  local dest_file="$dest_dir/ip2region_v4.xdb"
-  local tmp_file="$dest_file.tmp.$$"
-  local size=""
-
-  mkdir -p "$dest_dir"
-  if [ -s "$dest_file" ]; then
-    size="$(wc -c < "$dest_file" | tr -d ' ')"
-    if [ "$size" -ge 102400 ]; then
-      echo "ip2region xdb already installed: $dest_file ($size bytes)"
-      return 0
-    fi
-  fi
-
-  echo "ip2region xdb missing or too small, downloading..."
-  if command -v curl >/dev/null 2>&1; then
-    curl -L --fail --connect-timeout 15 --max-time 180 -o "$tmp_file" "$IP2REGION_XDB_URL"
-  elif command -v wget >/dev/null 2>&1; then
-    wget -O "$tmp_file" "$IP2REGION_XDB_URL"
-  else
-    echo "Warning: curl/wget not found, skip ip2region xdb download." >&2
-    return 0
-  fi
-
-  size="$(wc -c < "$tmp_file" | tr -d ' ')"
-  if [ "$size" -lt 102400 ]; then
-    rm -f "$tmp_file"
-    echo "Warning: downloaded ip2region xdb is too small: ${size} bytes" >&2
-    return 0
-  fi
-
-  mv "$tmp_file" "$dest_file"
-  chmod 0644 "$dest_file"
-  echo "ip2region xdb installed: $dest_file ($size bytes, sha256=$(hash_file "$dest_file"))"
-}
-
 print_plan_header() {
   printf '%-10s %-64s %-64s %s\n' "status" "source_sha256" "target_sha256" "path"
 }
@@ -159,6 +122,16 @@ while IFS= read -r rel_path; do
     print_plan_row "create" "$src_hash" "-" "$rel_path"
   fi
 done < "$MANIFEST_FILE"
+
+if [ -f "$RETIRED_MANIFEST_FILE" ]; then
+  while IFS= read -r rel_path; do
+    [ -n "$rel_path" ] || continue
+    dst="$TARGET_DIR/$rel_path"
+    if [ -e "$dst" ]; then
+      print_plan_row "retire" "-" "$(hash_file "$dst")" "$rel_path"
+    fi
+  done < "$RETIRED_MANIFEST_FILE"
+fi
 
 echo
 echo "Summary: total=$total_count overwrite=$overwrite_count create=$create_count same=$same_count"
@@ -203,7 +176,20 @@ while IFS= read -r rel_path; do
   cp -a "$src" "$dst"
 done < "$MANIFEST_FILE"
 
-install_ip2region_xdb
+if [ -f "$RETIRED_MANIFEST_FILE" ]; then
+  while IFS= read -r rel_path; do
+    [ -n "$rel_path" ] || continue
+    dst="$TARGET_DIR/$rel_path"
+    bak="$BACKUP_DIR/$rel_path"
+    if [ -e "$dst" ]; then
+      mkdir -p "$(dirname "$bak")"
+      cp -a "$dst" "$bak"
+      printf 'retired\t%s\n' "$rel_path" >> "$STATE_FILE"
+      rm -f "$dst"
+      printf 'retired\t-\t%s\t%s\n' "$(hash_file "$bak")" "$rel_path" >> "$INSTALL_SUMMARY"
+    fi
+  done < "$RETIRED_MANIFEST_FILE"
+fi
 
 ln -sfn "$BACKUP_DIR" "$BACKUP_BASE/latest"
 
